@@ -140,10 +140,17 @@ router.get('/weekly', authenticate, mgr, async (req, res, next) => {
       req.query.startDate ?? new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
       'startDate',
     )
-    const start = new Date(`${startDate}T00:00:00.000Z`)
+    const endDate = validateDate(
+      req.query.endDate ?? today(),
+      'endDate',
+    )
+    validateDateRange(startDate, endDate)
+
+    const start = dayBounds(startDate).start
+    const end   = dayBounds(endDate).end
 
     const rows = await Order.aggregate([
-      { $match: { status: 'closed', closed_at: { $gte: start } } },
+      { $match: { status: 'closed', closed_at: { $gte: start, $lte: end } } },
       {
         $group: {
           _id: {
