@@ -207,11 +207,11 @@ router.get('/waiters', authenticate, mgr, async (req, res, next) => {
     const match = { status: 'closed' }
     if (req.query.startDate) {
       validateDate(req.query.startDate, 'startDate')
-      match.closed_at = { $gte: new Date(`${req.query.startDate}T00:00:00.000Z`) }
+      match.closed_at = { $gte: dayBounds(req.query.startDate).start }
     }
     if (req.query.endDate) {
       validateDate(req.query.endDate, 'endDate')
-      match.closed_at = { ...match.closed_at, $lte: new Date(`${req.query.endDate}T23:59:59.999Z`) }
+      match.closed_at = { ...match.closed_at, $lte: dayBounds(req.query.endDate).end }
     }
     if (req.query.startDate && req.query.endDate) validateDateRange(req.query.startDate, req.query.endDate)
 
@@ -261,11 +261,11 @@ router.get('/top-items', authenticate, mgr, async (req, res, next) => {
     const match = { status: 'closed' }
     if (req.query.startDate) {
       validateDate(req.query.startDate, 'startDate')
-      match.closed_at = { $gte: new Date(`${req.query.startDate}T00:00:00.000Z`) }
+      match.closed_at = { $gte: dayBounds(req.query.startDate).start }
     }
     if (req.query.endDate) {
       validateDate(req.query.endDate, 'endDate')
-      match.closed_at = { ...match.closed_at, $lte: new Date(`${req.query.endDate}T23:59:59.999Z`) }
+      match.closed_at = { ...match.closed_at, $lte: dayBounds(req.query.endDate).end }
     }
     if (req.query.startDate && req.query.endDate) validateDateRange(req.query.startDate, req.query.endDate)
 
