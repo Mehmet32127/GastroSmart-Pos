@@ -9,11 +9,11 @@ pm2 stop gastrosmart-backend >nul 2>&1
 if %errorlevel% equ 0 (
     echo  Backend durduruldu.
 ) else (
-    echo  Backend zaten çalışmıyor veya bulunamadı.
+    echo  Backend zaten calismiyordu.
 )
 
 echo.
-echo  Tamamen kaldırmak için: pm2 delete gastrosmart-backend
-echo  Tekrar başlatmak için : BASLAT.bat
+echo  Tamamen kaldirmak icin: pm2 delete gastrosmart-backend
+echo  Tekrar baslatmak icin : BASLAT.bat
 echo.
 pause

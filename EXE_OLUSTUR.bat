@@ -1,75 +1,87 @@
 @echo off
 chcp 65001 > nul
-title GastroSmart EXE Oluşturucu
+title GastroSmart EXE Olusturucu
 
 echo.
-echo  GastroSmart POS - Windows EXE Oluşturuluyor
-echo  ════════════════════════════════════════════
+echo  GastroSmart POS - Windows EXE Olusturuluyor
+echo  ============================================
 echo.
 
 set "ROOT=%~dp0"
 
-:: Node.js kontrolü
-where node >nul 2>&1
+where node 1>nul 2>nul
 if %errorlevel% neq 0 (
-    echo  HATA: Node.js bulunamadı! https://nodejs.org
+    echo  HATA: Node.js bulunamadi! https://nodejs.org
     pause
     exit /b 1
 )
 
 pushd "%ROOT%"
 
-:: Root bağımlılıklar (Electron builder)
 if not exist "node_modules" (
-    echo  [0/5] Root bağımlılıklar kuruluyor...
+    echo  [0/5] Root bagimliliklar kuruluyor...
     call npm install --silent
-    if %errorlevel% neq 0 ( popd & echo  HATA: npm install (root) & pause & exit /b 1 )
+    if %errorlevel% neq 0 (
+        popd
+        echo  HATA: npm install basarisiz (root)
+        pause
+        exit /b 1
+    )
 )
 
-echo  [1/5] Backend bağımlılıklar...
+echo  [1/5] Backend bagimliliklar...
 pushd backend
 if not exist "node_modules" (
     call npm install --silent
-    if %errorlevel% neq 0 ( popd & popd & echo  HATA: npm install (backend) & pause & exit /b 1 )
 )
 popd
 
-echo  [2/5] Frontend bağımlılıklar...
+echo  [2/5] Frontend bagimliliklar...
 pushd frontend
 if not exist "node_modules" (
     call npm install --silent
-    if %errorlevel% neq 0 ( popd & popd & echo  HATA: npm install (frontend) & pause & exit /b 1 )
 )
 popd
 
 echo  [3/5] React derleniyor...
 pushd frontend
 call npm run build
-if %errorlevel% neq 0 ( popd & popd & echo  HATA: Frontend build başarısız & pause & exit /b 1 )
+if %errorlevel% neq 0 (
+    popd
+    popd
+    echo  HATA: Frontend build basarisiz
+    pause
+    exit /b 1
+)
 popd
 
-echo  [4/5] Public klasörüne kopyalanıyor...
+echo  [4/5] Public klasore kopyalaniyor...
 if not exist "backend\public" mkdir "backend\public"
 xcopy /s /e /y /q "frontend\dist\*" "backend\public\"
 
-echo  [5/5] EXE paketi oluşturuluyor...
+echo  [5/5] EXE paketi olusturuluyor...
 call npm run build:win
-if %errorlevel% neq 0 ( popd & echo  HATA: electron-builder başarısız & pause & exit /b 1 )
+if %errorlevel% neq 0 (
+    popd
+    echo  HATA: electron-builder basarisiz
+    pause
+    exit /b 1
+)
 
 if not exist "YUKLEYICILER" mkdir "YUKLEYICILER"
 for %%f in ("dist-electron\GastroSmart POS Setup *.exe") do (
     copy /Y "%%f" "YUKLEYICILER\GastroSmart-POS-Setup.exe" >nul
-    echo  Kopyalandı: %%~nxf
+    echo  Kopyalandi: %%~nxf
 )
 popd
 
 echo.
-echo  ════════════════════════════════════════════════
-echo   BAŞARILI!
+echo  ============================================
+echo   BASARILI!
 echo   EXE: YUKLEYICILER\GastroSmart-POS-Setup.exe
 echo.
-echo   Bu kurulum paketi MongoDB ve backend dahil
-echo   tam bir bağımsız Windows uygulamasıdır.
-echo  ════════════════════════════════════════════════
+echo   Bu paket MongoDB ve backend dahil tam
+echo   bagimsiz bir Windows uygulamasidir.
+echo  ============================================
 echo.
 pause
