@@ -95,10 +95,15 @@ app.get('/api/health', (req, res) => {
   const used = process.memoryUsage()
   const uptime = process.uptime()
   const os = require('os')
-  
+  const mongoose = require('mongoose')
+
+  const dbState = mongoose.connection.readyState
+  // 0=disconnected 1=connected 2=connecting 3=disconnecting
+  const dbStateMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' }
+
   res.json({
     success: true,
-    status: 'ok',
+    status: dbState === 1 ? 'ok' : 'degraded',
     app: 'gastrosmart-pos',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
@@ -114,7 +119,8 @@ app.get('/api/health', (req, res) => {
       loadAverage: os.loadavg()
     },
     database: {
-      connected: true
+      connected: dbState === 1,
+      state: dbStateMap[dbState] ?? 'unknown',
     }
   })
 })
