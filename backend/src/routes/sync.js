@@ -104,9 +104,18 @@ async function processQueueItem(type, payload, user, req) {
       const menuItem = await MenuItem.findOne({ _id: menuItemId, is_available: true })
       if (!menuItem) throw new Error('Ürün bulunamadı veya satışa kapalı')
 
-      if (menuItem.stock_quantity !== null && menuItem.stock_quantity !== undefined
-          && menuItem.stock_quantity < qty) {
-        throw new Error(`Yetersiz stok. Mevcut: ${menuItem.stock_quantity} ${menuItem.unit ?? 'adet'}`)
+      const hasStock = menuItem.stock_quantity !== null && menuItem.stock_quantity !== undefined
+
+      if (hasStock) {
+        // Atomik stok azaltma — orders.js ile aynı pattern, race condition önler
+        const updated = await MenuItem.findOneAndUpdate(
+          { _id: menuItem._id, stock_quantity: { $gte: qty } },
+          { $inc: { stock_quantity: -qty } },
+          { new: false },
+        )
+        if (!updated) {
+          throw new Error(`Yetersiz stok. Mevcut: ${menuItem.stock_quantity} ${menuItem.unit ?? 'adet'}`)
+        }
       }
 
       const totalPrice = parseFloat((menuItem.price * qty).toFixed(2))
@@ -123,10 +132,6 @@ async function processQueueItem(type, payload, user, req) {
       })
       order.recalculate()
       await order.save()
-
-      if (menuItem.stock_quantity !== null && menuItem.stock_quantity !== undefined) {
-        await MenuItem.findByIdAndUpdate(menuItem._id, { $inc: { stock_quantity: -qty } })
-      }
 
       const addedItem = order.items[order.items.length - 1]
       return { itemId: addedItem._id }
