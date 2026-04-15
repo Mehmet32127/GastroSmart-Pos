@@ -1,0 +1,332 @@
+import React, { useEffect, useState, useCallback } from 'react'
+import { Plus, Edit2, Trash2, Search, AlertTriangle, Package } from 'lucide-react'
+import { Modal, ConfirmDialog } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Input, Select, Textarea } from '@/components/ui/Input'
+import { Badge, Card, Spinner, EmptyState } from '@/components/ui/common'
+import { menuApi } from '@/api/menu'
+import { formatCurrency, cn } from '@/utils/format'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import type { MenuItem, Category } from '@/types'
+import toast from 'react-hot-toast'
+
+const itemSchema = z.object({
+  name: z.string().min(1, 'Ürün adı gerekli'),
+  categoryId: z.string().min(1, 'Kategori seçin'),
+  price: z.coerce.number().min(0.01, 'Fiyat gerekli'),
+  cost: z.coerce.number().min(0).optional(),
+  tax: z.coerce.number().min(0).max(100).default(8),
+  stock: z.coerce.number().min(0).optional(),
+  minStock: z.coerce.number().min(0).optional(),
+  unit: z.string().default('adet'),
+  description: z.string().optional(),
+  active: z.boolean().default(true),
+})
+
+type ItemForm = z.infer<typeof itemSchema>
+
+export const MenuPage: React.FC = () => {
+  const [categories, setCategories] = useState<Category[]>([])
+  const [items, setItems] = useState<MenuItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedCategory, setSelectedCategory] = useState<string | 'all'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [itemModalOpen, setItemModalOpen] = useState(false)
+  const [catModalOpen, setCatModalOpen] = useState(false)
+  const [catName, setCatName] = useState('')
+  const [catIcon, setCatIcon] = useState('🍽️')
+  const [editItem, setEditItem] = useState<MenuItem | undefined>()
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null)
+  const [stockModalItem, setStockModalItem] = useState<MenuItem | null>(null)
+  const [stockAdjust, setStockAdjust] = useState('')
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<ItemForm>({
+    resolver: zodResolver(itemSchema),
+    defaultValues: { tax: 8, unit: 'adet', active: true },
+  })
+
+  const load = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const [c, i] = await Promise.all([menuApi.getCategories(), menuApi.getItems()])
+      setCategories(c.data.data || [])
+      setItems(i.data.data || [])
+    } catch { toast.error('Menü yüklenemedi') }
+    finally { setIsLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const openItemModal = (item?: MenuItem) => {
+    setEditItem(item)
+    if (item) {
+      reset({
+        name: item.name, categoryId: item.categoryId, price: item.price,
+        cost: item.cost, tax: item.tax, stock: item.stock, minStock: item.minStock,
+        unit: item.unit, description: item.description, active: item.active,
+      })
+    } else {
+      reset({ tax: 8, unit: 'adet', active: true })
+    }
+    setItemModalOpen(true)
+  }
+
+  const onSubmitItem = async (data: ItemForm) => {
+    try {
+      if (editItem) {
+        await menuApi.updateItem(editItem.id, data)
+        toast.success('Ürün güncellendi')
+      } else {
+        await menuApi.createItem(data)
+        toast.success('Ürün eklendi')
+      }
+      setItemModalOpen(false)
+      load()
+    } catch { toast.error('İşlem başarısız') }
+  }
+
+  const handleDeleteItem = async () => {
+    if (!deleteItemId) return
+    try {
+      await menuApi.deleteItem(deleteItemId)
+      toast.success('Ürün silindi')
+      setDeleteItemId(null)
+      load()
+    } catch { toast.error('Silinemedi') }
+  }
+
+  const handleCreateCategory = async () => {
+    if (!catName.trim()) return
+    try {
+      await menuApi.createCategory({ name: catName.trim(), icon: catIcon })
+      toast.success('Kategori eklendi')
+      setCatModalOpen(false)
+      setCatName('')
+      setCatIcon('🍽️')
+      load()
+    } catch { toast.error('Kategori eklenemedi') }
+  }
+
+  const handleStockUpdate = async (operation: 'set' | 'add' | 'subtract') => {
+    if (!stockModalItem) return
+    try {
+      await menuApi.updateStock(stockModalItem.id, parseFloat(stockAdjust) || 0, operation)
+      toast.success('Stok güncellendi')
+      setStockModalItem(null)
+      setStockAdjust('')
+      load()
+    } catch { toast.error('Stok güncellenemedi') }
+  }
+
+  const filtered = items.filter((item) => {
+    const matchCat = selectedCategory === 'all' || item.categoryId === selectedCategory
+    const matchSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchCat && matchSearch
+  })
+
+  const lowStock = items.filter(i => i.stock !== undefined && i.stock <= (i.minStock || 3))
+  const catOptions = [{ value: '', label: 'Kategori seçin' }, ...categories.map(c => ({ value: c.id, label: c.name }))]
+
+  return (
+    <div className="flex h-full">
+      {/* Sidebar: categories */}
+      <div className="w-52 flex flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="p-3 border-b border-[var(--color-border)]">
+          <Button fullWidth size="sm" icon={<Plus size={14} />} onClick={() => setCatModalOpen(true)}>
+            Kategori Ekle
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+          <button onClick={() => setSelectedCategory('all')}
+            className={cn('w-full text-left px-3 py-2 rounded-xl text-sm font-body transition-colors',
+              selectedCategory === 'all'
+                ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
+                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)]'
+            )}>
+            <span className="mr-2">📋</span> Tümü
+            <span className="ml-1 text-xs opacity-60">({items.length})</span>
+          </button>
+          {categories.map((cat) => {
+            const count = items.filter(i => i.categoryId === cat.id).length
+            return (
+              <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
+                className={cn('w-full text-left px-3 py-2 rounded-xl text-sm font-body transition-colors flex items-center justify-between',
+                  selectedCategory === cat.id
+                    ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
+                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)]'
+                )}>
+                <span><span className="mr-2">{cat.icon}</span>{cat.name}</span>
+                <span className="text-xs opacity-60">{count}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Low stock alert */}
+        {lowStock.length > 0 && (
+          <div className="p-3 border-t border-[var(--color-border)]">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <AlertTriangle size={12} className="text-amber-400" />
+                <span className="text-xs font-semibold text-amber-400 font-body">Düşük Stok</span>
+              </div>
+              <div className="space-y-0.5">
+                {lowStock.slice(0, 3).map(i => (
+                  <p key={i.id} className="text-[10px] text-amber-400/80 font-body truncate">
+                    {i.name}: {i.stock} {i.unit}
+                  </p>
+                ))}
+                {lowStock.length > 3 && (
+                  <p className="text-[10px] text-amber-400/60 font-body">+{lowStock.length - 3} daha</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="relative flex-1 max-w-xs">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Ürün ara..."
+              className="w-full pl-8 pr-3 py-1.5 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text)] placeholder-[var(--color-text-muted)]/50 focus:outline-none focus:border-[var(--color-accent)]/40 font-body" />
+          </div>
+          <div className="ml-auto">
+            <Button size="sm" icon={<Plus size={14} />} onClick={() => openItemModal()}>Ürün Ekle</Button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full"><Spinner size={32} /></div>
+          ) : filtered.length === 0 ? (
+            <EmptyState icon={<Package size={24} />} title="Ürün bulunamadı"
+              action={<Button size="sm" icon={<Plus size={14} />} onClick={() => openItemModal()}>Ürün Ekle</Button>} />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filtered.map((item) => (
+                <Card key={item.id} hover className="!p-3">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[var(--color-text)] font-body truncate">{item.name}</p>
+                      <p className="text-xs text-[var(--color-text-muted)] font-body">{item.categoryName}</p>
+                    </div>
+                    {!item.active && <Badge variant="muted">Pasif</Badge>}
+                  </div>
+
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-lg font-bold font-mono text-[var(--color-accent)]">
+                      {formatCurrency(item.price)}
+                    </span>
+                    <span className="text-xs text-[var(--color-text-muted)] font-body">KDV %{item.tax}</span>
+                  </div>
+
+                  {item.stock !== undefined && (
+                    <button onClick={() => setStockModalItem(item)}
+                      className={cn('w-full flex items-center justify-between px-2 py-1.5 rounded-lg mb-2 text-xs font-body transition-colors',
+                        item.stock <= 0 ? 'bg-red-500/10 text-red-400' :
+                        item.stock <= (item.minStock || 3) ? 'bg-amber-500/10 text-amber-400' :
+                        'bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                      )}>
+                      <span className="flex items-center gap-1">
+                        <Package size={10} />
+                        Stok: {item.stock} {item.unit}
+                      </span>
+                      {item.stock <= (item.minStock || 3) && item.stock > 0 && (
+                        <AlertTriangle size={10} />
+                      )}
+                    </button>
+                  )}
+
+                  <div className="flex gap-1">
+                    <button onClick={() => openItemModal(item)}
+                      className="flex-1 py-1.5 rounded-lg bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] text-xs flex items-center justify-center gap-1 transition-colors font-body">
+                      <Edit2 size={11} /> Düzenle
+                    </button>
+                    <button onClick={() => setDeleteItemId(item.id)}
+                      className="p-1.5 rounded-lg bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-red-400 transition-colors">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Item Modal */}
+      <Modal isOpen={itemModalOpen} onClose={() => setItemModalOpen(false)}
+        title={editItem ? 'Ürün Düzenle' : 'Yeni Ürün'} size="md"
+        footer={<>
+          <Button variant="secondary" onClick={() => setItemModalOpen(false)}>İptal</Button>
+          <Button onClick={handleSubmit(onSubmitItem)}>{editItem ? 'Güncelle' : 'Ekle'}</Button>
+        </>}>
+        <form className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Ürün Adı *" error={errors.name?.message} {...register('name')} />
+            <Select label="Kategori *" options={catOptions} error={errors.categoryId?.message} {...register('categoryId')} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Input label="Fiyat ₺ *" type="number" step="0.01" error={errors.price?.message} {...register('price')} />
+            <Input label="Maliyet ₺" type="number" step="0.01" {...register('cost')} />
+            <Input label="KDV %" type="number" {...register('tax')} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Input label="Stok" type="number" {...register('stock')} />
+            <Input label="Min Stok" type="number" {...register('minStock')} />
+            <Input label="Birim" placeholder="adet" {...register('unit')} />
+          </div>
+          <Textarea label="Açıklama" {...register('description')} />
+          <label className="flex items-center gap-2 text-sm font-body text-[var(--color-text-muted)] cursor-pointer">
+            <input type="checkbox" {...register('active')} className="rounded" />
+            Aktif
+          </label>
+        </form>
+      </Modal>
+
+      {/* Stock Modal */}
+      <Modal isOpen={!!stockModalItem} onClose={() => setStockModalItem(null)}
+        title="Stok Güncelle" size="sm">
+        {stockModalItem && (
+          <div className="space-y-4">
+            <p className="text-sm text-[var(--color-text-muted)] font-body">
+              <strong className="text-[var(--color-text)]">{stockModalItem.name}</strong> · Mevcut: {stockModalItem.stock} {stockModalItem.unit}
+            </p>
+            <Input label="Miktar" type="number" step="0.1" value={stockAdjust}
+              onChange={(e) => setStockAdjust(e.target.value)} />
+            <div className="grid grid-cols-3 gap-2">
+              <Button variant="secondary" size="sm" onClick={() => handleStockUpdate('set')}>Ayarla</Button>
+              <Button variant="success" size="sm" onClick={() => handleStockUpdate('add')}>+ Ekle</Button>
+              <Button variant="danger" size="sm" onClick={() => handleStockUpdate('subtract')}>- Çıkar</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmDialog isOpen={!!deleteItemId} onConfirm={handleDeleteItem}
+        onCancel={() => setDeleteItemId(null)} title="Ürün Sil"
+        message="Bu ürünü silmek istediğinizden emin misiniz?" confirmText="Sil" danger />
+
+      {/* Kategori Modal */}
+      <Modal isOpen={catModalOpen} onClose={() => setCatModalOpen(false)}
+        title="Yeni Kategori" size="sm"
+        footer={<>
+          <Button variant="secondary" onClick={() => setCatModalOpen(false)}>İptal</Button>
+          <Button onClick={handleCreateCategory} disabled={!catName.trim()}>Ekle</Button>
+        </>}>
+        <div className="space-y-3">
+          <Input label="Kategori Adı *" value={catName} onChange={e => setCatName(e.target.value)}
+            placeholder="ör. Başlangıçlar" />
+          <Input label="Emoji / İkon" value={catIcon} onChange={e => setCatIcon(e.target.value)}
+            placeholder="🍽️" />
+        </div>
+      </Modal>
+    </div>
+  )
+}

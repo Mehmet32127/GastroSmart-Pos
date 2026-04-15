@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GastroSmart POS</string>
+    <string name="title_activity_main">GastroSmart POS</string>
+    <string name="package_name">com.gastrosmart.pos</string>
+    <string name="custom_url_scheme">com.gastrosmart.pos</string>
+</resources>

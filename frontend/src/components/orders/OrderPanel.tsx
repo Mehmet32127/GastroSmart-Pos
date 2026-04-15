@@ -1,0 +1,296 @@
+import React, { useState, useEffect } from 'react'
+import { Search, Plus, Minus, Trash2, MessageSquare, X, ChevronLeft, ShoppingBag } from 'lucide-react'
+import { cn, formatCurrency } from '@/utils/format'
+import { Input } from '@/components/ui/Input'
+import { useOrderStore } from '@/store/orderStore'
+import { menuApi } from '@/api/menu'
+import { ordersApi } from '@/api/orders'
+import type { Table, MenuItem, Category } from '@/types'
+import toast from 'react-hot-toast'
+
+type PanelView = 'order' | 'menu'
+
+interface OrderPanelProps {
+  table: Table
+  onClose: () => void
+}
+
+export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
+  const { currentOrder, setCurrentOrder, calculateTotals } = useOrderStore()
+  const [view, setView] = useState<PanelView>('order')
+  const [categories, setCategories] = useState<Category[]>([])
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [editNoteItemId, setEditNoteItemId] = useState<string | null>(null)
+  const [noteText, setNoteText] = useState('')
+  const guestCount = table.capacity
+
+  const { subtotal, taxTotal, total } = calculateTotals()
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [catRes, itemRes] = await Promise.all([
+          menuApi.getCategories(),
+          menuApi.getItems({ active: true }),
+        ])
+        setCategories(catRes.data.data || [])
+        setMenuItems(itemRes.data.data || [])
+        if (catRes.data.data?.[0]) setSelectedCategory(catRes.data.data[0].id)
+      } catch { toast.error('Menü yüklenemedi') }
+    }
+    load()
+  }, [])
+
+  useEffect(() => {
+    if (!table.currentOrderId) return
+    ordersApi.getById(table.currentOrderId).then(({ data }) => {
+      if (data.data) setCurrentOrder(data.data)
+    }).catch(() => {})
+  }, [table.currentOrderId])
+
+  const filteredItems = menuItems.filter(item => {
+    const matchCat = !selectedCategory || item.categoryId === selectedCategory
+    const matchSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchCat && matchSearch
+  })
+
+  const handleAddItem = async (item: MenuItem) => {
+    if (isLoading) return
+    setIsLoading(true)
+    try {
+      let order = currentOrder
+      if (!order) {
+        const { data } = await ordersApi.create({ tableId: table.id, guestCount })
+        order = data.data!
+        setCurrentOrder(order)
+      }
+      await ordersApi.addItem(order.id, { menuItemId: item.id, quantity: 1 })
+      const { data: orderData } = await ordersApi.getById(order.id)
+      if (orderData.data) setCurrentOrder(orderData.data)
+      toast.success(item.name + ' eklendi', { duration: 800, icon: '✓' })
+    } catch { toast.error('Eklenemedi') }
+    finally { setIsLoading(false) }
+  }
+
+  const handleUpdateQuantity = async (itemId: string, delta: number) => {
+    if (!currentOrder) return
+    const item = currentOrder.items.find(i => i.id === itemId)
+    if (!item) return
+    const newQty = item.quantity + delta
+    if (newQty <= 0) {
+      try {
+        await ordersApi.removeItem(currentOrder.id, itemId)
+        const { data } = await ordersApi.getById(currentOrder.id)
+        if (data.data) setCurrentOrder(data.data)
+      } catch { toast.error('Silinemedi') }
+      return
+    }
+    try {
+      await ordersApi.updateItem(currentOrder.id, itemId, { quantity: newQty })
+      const { data } = await ordersApi.getById(currentOrder.id)
+      if (data.data) setCurrentOrder(data.data)
+    } catch { toast.error('Güncellenemedi') }
+  }
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!currentOrder) return
+    try {
+      await ordersApi.removeItem(currentOrder.id, itemId)
+      const { data } = await ordersApi.getById(currentOrder.id)
+      if (data.data) setCurrentOrder(data.data)
+    } catch { toast.error('Silinemedi') }
+  }
+
+  const handleSaveNote = async (itemId: string) => {
+    if (!currentOrder) return
+    try {
+      await ordersApi.updateItem(currentOrder.id, itemId, { note: noteText })
+      const { data } = await ordersApi.getById(currentOrder.id)
+      if (data.data) setCurrentOrder(data.data)
+      setEditNoteItemId(null)
+      setNoteText('')
+    } catch { toast.error('Not kaydedilemedi') }
+  }
+
+  const activeItems = currentOrder?.items.filter(i => i.status !== 'cancelled') || []
+
+  return (
+    // Backdrop — boşluğa tıklayınca kapat
+    <div className="fixed inset-0 z-50 flex items-stretch justify-end" onClick={onClose}>
+      {/* Panel — tıklamayı durdur */}
+      <div className="flex flex-col bg-[var(--color-bg)] w-full max-w-2xl h-full shadow-2xl"
+        onClick={e => e.stopPropagation()}>
+
+        {view === 'order' ? (
+          <>
+            {/* Başlık */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex-shrink-0">
+              <div>
+                <h2 className="font-display font-bold text-[var(--color-text)] text-2xl">{table.name}</h2>
+                <p className="text-sm text-[var(--color-text-muted)] font-body mt-0.5">
+                  {activeItems.length === 0 ? 'Henüz sipariş yok' : `${activeItems.length} ürün`}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={onClose}
+                  className="p-3 rounded-2xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] transition-colors">
+                  <X size={22} />
+                </button>
+                <button onClick={() => setView('menu')}
+                  className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-base font-semibold hover:brightness-110 transition-all active:scale-95">
+                  <Plus size={20} />
+                  Ürün Ekle
+                </button>
+              </div>
+            </div>
+
+            {/* Sipariş listesi */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {activeItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                  <div className="w-20 h-20 rounded-3xl bg-[var(--color-surface2)] flex items-center justify-center">
+                    <ShoppingBag size={36} className="text-[var(--color-text-muted)]" />
+                  </div>
+                  <p className="text-[var(--color-text-muted)] font-body text-lg">Sipariş boş</p>
+                  <button onClick={() => setView('menu')}
+                    className="px-6 py-3 rounded-2xl bg-[var(--color-accent)]/15 text-[var(--color-accent)] text-base font-medium hover:bg-[var(--color-accent)]/25 transition-colors">
+                    Menüden ürün seç
+                  </button>
+                </div>
+              ) : (
+                activeItems.map(item => (
+                  <div key={item.id} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-base font-semibold text-[var(--color-text)] font-body">{item.menuItemName}</p>
+                        <p className="text-sm text-[var(--color-text-muted)] font-mono">{formatCurrency(item.unitPrice)} / adet</p>
+                      </div>
+                      <p className="text-lg font-bold font-mono text-[var(--color-accent)]">{formatCurrency(item.totalPrice)}</p>
+                    </div>
+
+                    {editNoteItemId === item.id ? (
+                      <div className="mt-3 flex gap-2">
+                        <input autoFocus value={noteText} onChange={e => setNoteText(e.target.value)}
+                          placeholder="Not ekle..."
+                          className="flex-1 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--color-text)] focus:outline-none font-body"
+                          onKeyDown={e => { if (e.key === 'Enter') handleSaveNote(item.id) }} />
+                        <button onClick={() => handleSaveNote(item.id)}
+                          className="px-4 py-2.5 rounded-xl bg-[var(--color-accent)]/20 text-[var(--color-accent)] text-sm font-medium">Kaydet</button>
+                        <button onClick={() => setEditNoteItemId(null)}
+                          className="px-3 py-2.5 rounded-xl bg-[var(--color-surface2)] text-[var(--color-text-muted)] text-sm">✕</button>
+                      </div>
+                    ) : item.note ? (
+                      <button onClick={() => { setEditNoteItemId(item.id); setNoteText(item.note || '') }}
+                        className="mt-2 text-xs text-amber-400/80 hover:text-amber-400 truncate w-full text-left">
+                        📝 {item.note}
+                      </button>
+                    ) : null}
+
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--color-border)]/50">
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => handleUpdateQuantity(item.id, -1)}
+                          className="w-11 h-11 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-400 hover:border-red-500/30 transition-colors active:scale-95">
+                          <Minus size={16} />
+                        </button>
+                        <span className="w-8 text-center text-lg font-bold font-mono text-[var(--color-text)]">{item.quantity}</span>
+                        <button onClick={() => handleUpdateQuantity(item.id, 1)}
+                          className="w-11 h-11 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-green-400 hover:border-green-500/30 transition-colors active:scale-95">
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { setEditNoteItemId(item.id); setNoteText(item.note || '') }}
+                          className="w-11 h-11 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-amber-400 transition-colors">
+                          <MessageSquare size={16} />
+                        </button>
+                        <button onClick={() => handleDeleteItem(item.id)}
+                          className="w-11 h-11 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-400 hover:border-red-500/30 transition-colors active:scale-95">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Alt: Toplam + Siparişi Kaydet */}
+            {activeItems.length > 0 && (
+              <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-surface)] space-y-3 flex-shrink-0">
+                <div className="space-y-1.5 text-sm font-body">
+                  <div className="flex justify-between text-[var(--color-text-muted)]">
+                    <span>Ara Toplam</span><span className="font-mono">{formatCurrency(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-[var(--color-text-muted)]">
+                    <span>KDV</span><span className="font-mono">{formatCurrency(taxTotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold text-[var(--color-text)] pt-2 border-t border-[var(--color-border)]">
+                    <span className="font-display">Toplam</span>
+                    <span className="font-mono text-[var(--color-accent)]">{formatCurrency(total)}</span>
+                  </div>
+                </div>
+                <button onClick={onClose}
+                  className="w-full py-4 rounded-2xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-lg font-bold hover:brightness-110 transition-all active:scale-95">
+                  ✓ Siparişi Kaydet
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Menü başlık */}
+            <div className="flex items-center gap-4 px-6 py-5 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex-shrink-0">
+              <button onClick={() => setView('order')}
+                className="p-3 rounded-2xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)] transition-colors">
+                <ChevronLeft size={22} />
+              </button>
+              <h2 className="font-display font-bold text-[var(--color-text)] text-xl">Ürün Seç</h2>
+              <div className="flex-1">
+                <Input icon={<Search size={15} />} placeholder="Ürün ara..."
+                  value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Kategori tabs */}
+            <div className="flex gap-2 px-4 py-3 overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-surface)] flex-shrink-0">
+              {categories.map(cat => (
+                <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
+                  className={cn(
+                    'flex-shrink-0 px-4 py-2.5 rounded-2xl text-sm font-medium whitespace-nowrap transition-all duration-200',
+                    selectedCategory === cat.id
+                      ? 'bg-[var(--color-accent)] text-[var(--color-accent-text)]'
+                      : 'bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                  )}>
+                  {cat.icon} {cat.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Ürün grid — büyük, tablet dostu */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="grid grid-cols-2 gap-3">
+                {filteredItems.map(item => (
+                  <button key={item.id} onClick={() => handleAddItem(item)}
+                    disabled={isLoading}
+                    className={cn(
+                      'flex flex-col p-5 rounded-2xl text-left transition-all duration-150 min-h-[100px]',
+                      'bg-[var(--color-surface)] border-2 border-[var(--color-border)]',
+                      'hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface2)]',
+                      'active:scale-95 active:border-[var(--color-accent)]',
+                      'disabled:opacity-40 disabled:cursor-not-allowed'
+                    )}>
+                    <p className="text-base font-semibold text-[var(--color-text)] font-body leading-snug mb-2 line-clamp-2">{item.name}</p>
+                    <p className="text-lg font-bold text-[var(--color-accent)] font-mono mt-auto">{formatCurrency(item.price)}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

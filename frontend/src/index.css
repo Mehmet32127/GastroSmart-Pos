@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Variables (overridden by theme) ──────────────────────────────────── */
+:root {
+  --color-bg: #0f1117;
+  --color-surface: #161923;
+  --color-surface2: #1e2235;
+  --color-border: #2d3348;
+  --color-text: #f0f2f8;
+  --color-text-muted: #6b7280;
+  --color-accent: #f59e0b;
+  --color-accent-text: #0f1117;
+  --border-radius: 12px;
+  --font-scale: 1;
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-size: calc(18px * var(--font-scale, 1));
+}
+
+body {
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--color-border) transparent; }
+
+/* ─── Selection ─────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(245, 158, 11, 0.25);
+  color: var(--color-text);
+}
+
+/* ─── Keyframes ─────────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-20px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes bounceIn {
+  0%   { transform: scale(0.85); opacity: 0; }
+  60%  { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes ripple {
+  0%   { transform: scale(0); opacity: 0.5; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3); }
+  50%       { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ─── Font families ──────────────────────────────────────────────────────────── */
+.font-display { font-family: 'Syne', sans-serif; }
+.font-body    { font-family: 'DM Sans', sans-serif; }
+.font-mono    { font-family: 'JetBrains Mono', monospace; }
+
+/* ─── Utility classes ────────────────────────────────────────────────────────── */
+.animate-fade-in    { animation: fadeIn 0.25s ease-out both; }
+.animate-slide-in   { animation: slideIn 0.3s ease-out both; }
+.animate-slide-up   { animation: slideUp 0.3s ease-out both; }
+.animate-bounce-in  { animation: bounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+
+/* ─── Touch improvements ─────────────────────────────────────────────────────── */
+button, [role="button"] {
+  touch-action: manipulation;
+  user-select: none;
+}
+
+input, textarea, select {
+  color-scheme: dark;
+}
+
+/* ─── Custom focus ring ──────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ─── React hot toast custom ─────────────────────────────────────────────────── */
+.react-hot-toast > div {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 13px !important;
+}
+
+/* ─── PWA overscroll ─────────────────────────────────────────────────────────── */
+html, body, #root {
+  overscroll-behavior: none;
+}
+
+/* ─── Gradient header for cards ──────────────────────────────────────────────── */
+.gradient-header {
+  background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface2) 100%);
+}
+
+/* ─── Glass effect ────────────────────────────────────────────────────────────── */
+.glass {
+  background: rgba(22, 25, 35, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ─── Status indicator dots ──────────────────────────────────────────────────── */
+.status-dot-available { background: #22c55e; }
+.status-dot-occupied  { background: #ef4444; }
+.status-dot-reserved  { background: #f59e0b; }
+.status-dot-cleaning  { background: #3b82f6; }
+
+/* ─── No flash on theme load ─────────────────────────────────────────────────── */
+#root {
+  background-color: var(--color-bg);
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+button { min-height: 44px; padding-left: 16px !important; padding-right: 16px !important; }
