@@ -9,19 +9,23 @@ const logger = require('../utils/logger')
 
 // ── Formatter ─────────────────────────────────────────────────────────────────
 
-// Yerel saat dilimi (sunucu Windows'ta Türkiye saati ile çalışıyor)
-// Date metotları (getHours, getDate vb.) yerel saati döndürür — toISOString() değil
+const TZ = 'Europe/Istanbul'
+
+// Intl.DateTimeFormat kullanarak sunucu timezone'undan bağımsız Istanbul saati döndürür.
+// Önceki implementasyon Date.getHours/getDate gibi yerel saat metodları kullanıyordu;
+// bu sunucu UTC'de çalışırsa saatleri 3 saat kaydırıyordu.
 function localDate(d) {
-  const y   = d.getFullYear()
-  const m   = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(d)
+  // sv-SE locale'i YYYY-MM-DD formatı üretir
 }
 
 function localTime(d) {
-  const h   = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${h}:${min}`
+  return new Intl.DateTimeFormat('tr-TR', {
+    timeZone: TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d)
 }
 
 function fmtReservation(r) {
@@ -99,7 +103,8 @@ router.post('/', authenticate, async (req, res, next) => {
     })
     const data = schema.parse(req.body)
 
-    const reservationTime = new Date(`${data.date}T${data.time}:00`)
+    // +03:00 eki ile Istanbul saati olarak yorumlanır — sunucu timezone'undan bağımsız
+    const reservationTime = new Date(`${data.date}T${data.time}:00+03:00`)
     if (isNaN(reservationTime.getTime())) return fail(res, 'Geçersiz tarih/saat', 400)
 
     // endTime verilmişse durationMin'i hesapla, yoksa default 120 dk
@@ -165,19 +170,19 @@ router.put('/:id', authenticate, authorize('admin', 'manager'), async (req, res,
     if (data.deposit       !== undefined) reservation.deposit     = data.deposit
     if (data.tableId       !== undefined) reservation.table_id    = data.tableId || null
 
-    // Tarih/saat güncellemesi — toISOString() UTC döndüreceği için yerel saat metodları kullan
+    // Tarih/saat güncellemesi — +03:00 ile Istanbul saati olarak yorumla
     if (data.date || data.time) {
       const d = data.date ?? localDate(reservation.reservation_time)
       const t = data.time ?? localTime(reservation.reservation_time)
-      reservation.reservation_time = new Date(`${d}T${t}:00`)
+      reservation.reservation_time = new Date(`${d}T${t}:00+03:00`)
     }
 
     // endTime → durationMin hesapla
     if (data.endTime) {
       const baseDate = data.date ?? localDate(reservation.reservation_time)
       const startTime = data.time ?? localTime(reservation.reservation_time)
-      const start = new Date(`${baseDate}T${startTime}:00`)
-      const end   = new Date(`${baseDate}T${data.endTime}:00`)
+      const start = new Date(`${baseDate}T${startTime}:00+03:00`)
+      const end   = new Date(`${baseDate}T${data.endTime}:00+03:00`)
       const diff  = Math.round((end.getTime() - start.getTime()) / 60000)
       if (diff > 0) reservation.duration_minutes = diff
     } else if (data.durationMin !== undefined) {
