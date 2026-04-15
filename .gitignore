@@ -1,38 +1,37 @@
-# Dependencies
+# Bağımlılıklar
 node_modules/
 npm-debug.log
 yarn-error.log
 
-# Environment variables (NEVER commit!)
+# Ortam değişkenleri (ASLA commit'leme!)
 .env
 .env.local
 .env.*.local
 
-# Build outputs
+# Build çıktıları
 dist/
 build/
 dist-electron/
 *.exe
 *.dmg
 *.AppImage
+*.apk
 
-# Electron — runtime secrets (auto-generated, her kuruluma özgü)
+# Kurulum çıktıları (APK_OLUSTUR.bat / EXE_OLUSTUR.bat çıktıları)
+YUKLEYICILER/
+
+# Electron — runtime secrets (otomatik oluşur, her kuruluma özgü)
 **/secrets.json
 
-# SSL certs (generate-certs.js ile oluşturulur)
-backend/certs/
-
-# Database
+# Veritabanı & loglar
 backend/data/
 backend/logs/
+backend/backups/
 logs/
+backups/
 *.log
 
-# Backups
-backend/backups/
-backups/
-
-# Uploads (kullanıcı dosyaları)
+# Yüklemeler (kullanıcı dosyaları)
 backend/uploads/
 
 # PM2
@@ -54,6 +53,6 @@ temp/
 tmp/
 .cache/
 
-# Testing
+# Test
 coverage/
 .nyc_output/

@@ -34,7 +34,7 @@ GastroSmart POS, tek bir Windows bilgisayar üzerinde çalışan, aynı ağdaki 
 | Backend | Node.js + Express | `backend/server.js` |
 | Frontend | React + Vite (build) | `backend/public/` |
 | Veritabanı | MongoDB | Windows Service |
-| Process Manager | PM2 | Sistem servisi |
+| Process Manager | PM2 | `ecosystem.config.js` |
 | Gerçek Zamanlı | Socket.io | Backend üzerinde |
 | Masaüstü Uygulama | Electron 31 | `electron/main.js` |
 | Android APK | Capacitor | `frontend/android/` |
@@ -73,7 +73,7 @@ GastroSmart POS, tek bir Windows bilgisayar üzerinde çalışan, aynı ağdaki 
 ## Özellik Listesi
 
 ### Temel
-- Masa yönetimi (açma/kapama/birleştirme/bölme)
+- Masa yönetimi (açma/kapama/birleştirme/transfer)
 - Sipariş alma ve takibi
 - Menü ve kategori yönetimi
 - Stok takibi
@@ -107,7 +107,7 @@ GastroSmart POS, tek bir Windows bilgisayar üzerinde çalışan, aynı ağdaki 
 
 ### Diğer
 - Rezervasyon yönetimi
-- Offline kuyruk (LAN kopunca işlem kaybolmaz)
+- Offline kuyruk (LAN kopunca işlem kaybolmaz, HMAC doğrulamalı)
 - Bildirim sistemi
 - Sipariş geçmişi
 
@@ -118,7 +118,7 @@ GastroSmart POS, tek bir Windows bilgisayar üzerinde çalışan, aynı ağdaki 
 ### Gereksinimler
 - Windows 10/11 (64-bit)
 - Node.js 20 LTS
-- MongoDB Community (Windows Service)
+- MongoDB Community (Windows Service olarak kurulu)
 - PM2: `npm install -g pm2`
 
 ### İlk Kurulum
@@ -130,7 +130,7 @@ node scripts/seed-mongodb.js
 cd D:\gastrosmart-pos\frontend
 npm install
 npm run build
-xcopy dist ..\backend\public /s /e /y
+xcopy /s /e /y dist ..\backend\public\
 ```
 
 ### Başlatma
@@ -140,10 +140,24 @@ BASLAT.bat
 :: Tablet:   http://[sunucu-ip]:3001
 ```
 
+### PM2 ile manuel başlatma
+```bat
+pm2 start ecosystem.config.js --env production
+pm2 save
+pm2 startup   :: Windows servis olarak kayıt
+```
+
 ### Electron Installer Build
 ```bat
-npm run build:win
-:: → dist-electron\GastroSmart POS Setup 1.0.0.exe (~104 MB)
+EXE_OLUSTUR.bat
+:: → YUKLEYICILER\GastroSmart-POS-Setup.exe (~104 MB)
+```
+
+### Android APK Build
+```bat
+APK_OLUSTUR.bat
+:: Gereksinim: JDK 17/21, Android SDK
+:: → YUKLEYICILER\GastroSmart-POS.apk
 ```
 
 ---
@@ -155,7 +169,7 @@ npm run build:win
 | Kullanıcı | `admin` |
 | Şifre | `admin123` |
 
-> ⚠️ İlk girişte şifreyi değiştirin!
+> ⚠️ **İlk girişte şifreyi mutlaka değiştirin!**
 
 ---
 
@@ -165,8 +179,9 @@ npm run build:win
 gastrosmart-pos/
 ├── backend/
 │   ├── server.js              Ana sunucu
-│   ├── .env                   Ortam değişkenleri (SMTP, JWT vb.)
-│   ├── public/                Frontend build (otomatik deploy edilir)
+│   ├── .env                   Ortam değişkenleri (SMTP, JWT, HMAC vb.)
+│   ├── .env.example           Örnek ortam değişkenleri
+│   ├── public/                Frontend build (deploy sonrası buraya gelir)
 │   ├── uploads/               Logo ve görseller
 │   ├── src/
 │   │   ├── routes/            API endpoint'leri
@@ -182,15 +197,19 @@ gastrosmart-pos/
 │   │   ├── api/               Backend API istemcileri
 │   │   ├── store/             Zustand state
 │   │   └── utils/             format.ts, cn vb.
+│   ├── .env.local             HMAC_SECRET (backend ile eşleşmeli)
 │   └── android/               Capacitor Android projesi
 ├── electron/
 │   ├── main.js                Ana process (MongoDB + backend yönetimi)
 │   ├── preload.js             Renderer'a yazıcı API köprüsü
 │   └── loading.html           Açılış splash ekranı
+├── YUKLEYICILER/              Build çıktıları (APK, EXE) — git'e eklenmez
+├── ecosystem.config.js        PM2 yapılandırması
+├── package.json               Electron builder yapılandırması
 ├── BASLAT.bat                 PM2 ile sistemi başlat
 ├── DURDUR.bat                 Sistemi durdur
-├── APK_OLUSTUR.bat            Android APK derle (Capacitor)
-└── package.json               Electron builder konfigürasyonu
+├── APK_OLUSTUR.bat            Android APK derle (Capacitor + Gradle)
+└── EXE_OLUSTUR.bat            Windows EXE derle (Electron Builder)
 ```
 
 ---
@@ -216,3 +235,4 @@ Gmail App Password: Google Hesabım → Güvenlik → 2 Adımlı Doğrulama → 
 - Tüm tarihler `Europe/Istanbul` timezone ile gösterilir (`Intl.DateTimeFormat`)
 - Offline HMAC: `frontend/.env.local` ve `backend/.env` içindeki `HMAC_SECRET` aynı olmalı
 - Electron secretlar: `%APPDATA%\GastroSmart POS\secrets.json` — restart'ta korunur
+- PM2 log: `pm2 logs gastrosmart-backend` veya `backend/logs/` klasörü
