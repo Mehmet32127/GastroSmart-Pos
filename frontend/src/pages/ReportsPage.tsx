@@ -61,7 +61,7 @@ export const ReportsPage: React.FC = () => {
         const catMap: Record<string, { id: string; name: string; icon: string; count: number; revenue: number }> = {}
         catList.forEach((c: any) => { catMap[c.id] = { id: c.id, name: c.name, icon: c.icon || '', count: 0, revenue: 0 } })
         items.forEach((item: any) => {
-          const catId = idToCategory[item.menuItemId] ?? null
+          const catId = idToCategory[item.id] ?? null
           if (catId && catMap[catId]) {
             catMap[catId].count += item.count || 0
             catMap[catId].revenue += item.revenue || 0
