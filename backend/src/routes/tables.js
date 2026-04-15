@@ -157,8 +157,11 @@ router.post('/merge', authenticate, authorize('admin', 'manager'), async (req, r
 
       if (targetOrder) {
         // Kaynak kalemleri hedef siparişe ekle
+        // _id çıkarılıyor: toObject() kaynak _id'yi korur, bu hedef siparişte
+        // aynı subdocument _id'lerin oluşmasına yol açar.
         for (const item of sourceOrder.items) {
-          targetOrder.items.push(item.toObject ? item.toObject() : item)
+          const { _id, ...itemData } = item.toObject ? item.toObject() : item
+          targetOrder.items.push(itemData)
         }
         targetOrder.recalculate()
         await targetOrder.save({ session })
