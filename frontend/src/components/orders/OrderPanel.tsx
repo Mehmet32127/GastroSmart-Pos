@@ -25,7 +25,7 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [editNoteItemId, setEditNoteItemId] = useState<string | null>(null)
   const [noteText, setNoteText] = useState('')
-  const guestCount = table.capacity
+  const guestCount = 1  // Varsayılan 1; sipariş açıldıktan sonra güncellenebilir
 
   const { subtotal, taxTotal, total } = calculateTotals()
 
