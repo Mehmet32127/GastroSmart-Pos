@@ -220,16 +220,17 @@ router.patch('/:id/items/:itemId', authenticate, async (req, res, next) => {
     const item = order.items.id(req.params.itemId)
     if (!item) return fail(res, 'Kalem bulunamadı', 404)
 
-    // Stok iadesi: iptal veya miktar azalması
-    const menuItem = await MenuItem.findById(item.menu_item_id)
-    if (menuItem?.stock_quantity !== null && menuItem?.stock_quantity !== undefined) {
-      if (data.status === 'cancelled') {
-        menuItem.stock_quantity += item.quantity
-        await menuItem.save()
-      } else if (data.quantity !== undefined && data.quantity !== item.quantity) {
-        menuItem.stock_quantity += item.quantity - data.quantity
-        await menuItem.save()
-      }
+    // Stok iadesi: atomik $inc — race condition'ı önler
+    if (data.status === 'cancelled') {
+      await MenuItem.updateOne(
+        { _id: item.menu_item_id, stock_quantity: { $ne: null } },
+        { $inc: { stock_quantity: item.quantity } }
+      )
+    } else if (data.quantity !== undefined && data.quantity !== item.quantity) {
+      await MenuItem.updateOne(
+        { _id: item.menu_item_id, stock_quantity: { $ne: null } },
+        { $inc: { stock_quantity: item.quantity - data.quantity } }
+      )
     }
 
     if (data.quantity !== undefined) {
@@ -261,11 +262,10 @@ router.delete('/:id/items/:itemId', authenticate, async (req, res, next) => {
     if (!item) return fail(res, 'Kalem bulunamadı', 404)
 
     if (item.status !== 'cancelled') {
-      const menuItem = await MenuItem.findById(item.menu_item_id)
-      if (menuItem?.stock_quantity !== null && menuItem?.stock_quantity !== undefined) {
-        menuItem.stock_quantity += item.quantity
-        await menuItem.save()
-      }
+      await MenuItem.updateOne(
+        { _id: item.menu_item_id, stock_quantity: { $ne: null } },
+        { $inc: { stock_quantity: item.quantity } }
+      )
     }
 
     item.deleteOne()
