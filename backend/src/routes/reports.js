@@ -346,7 +346,7 @@ router.post('/cash-close', authenticate, mgr, async (req, res, next) => {
 // ── GET /api/reports/cash-history ─────────────────────────────────────────────
 router.get('/cash-history', authenticate, mgr, async (req, res, next) => {
   try {
-    const limit = parseInt(req.query.limit ?? '10')
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit ?? '10')), 100)
     const rows  = await CashClose.find()
       .populate('closed_by', 'full_name')
       .sort({ createdAt: -1 })
