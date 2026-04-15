@@ -52,7 +52,6 @@ export const TablesPage: React.FC = () => {
   // Socket reconnect'ten sonra masaları yenile
   useEffect(() => {
     if (socketStatus === 'connected' && previousStatusRef.current === 'disconnected') {
-      console.log('[TABLES] Socket reconnected, refreshing tables...')
       loadTables()
       toast.success('Bağlantı geri geldi! Masalar yenilendi.')
     }
