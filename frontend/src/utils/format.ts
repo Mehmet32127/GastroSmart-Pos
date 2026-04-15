@@ -7,7 +7,9 @@ const toDate = (date: string | Date): Date =>
   typeof date === 'string' ? new Date(date) : date
 
 export const formatCurrency = (amount: number): string =>
-  new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount)
+  // currency: 'TRY' bazı Android WebView ve eski Electron sürümlerinde ₺ sembolünü
+  // boş bırakabiliyor. Sembolü direkt yazarak tüm ortamlarda tutarlı görünüm sağlıyoruz.
+  '₺' + new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)
 
 export const formatDate = (date: string | Date): string =>
   new Intl.DateTimeFormat('tr-TR', {
