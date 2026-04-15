@@ -27,7 +27,7 @@ export const CONFIG = {
   REFRESH_STORAGE_KEY: 'gs_refresh_token',
   OFFLINE_QUEUE_KEY: 'gs_offline_queue',
   THEME_STORAGE_KEY: 'gs_theme',
-  HMAC_SECRET: import.meta.env.VITE_HMAC_SECRET || 'gastrosmart-offline-queue-secret',
+  HMAC_SECRET: import.meta.env.VITE_HMAC_SECRET || 'gastrosmart-offline-queue-secret-change-me',
   OFFLINE_RETRY_INTERVAL: 5000,
   SOCKET_RECONNECT_ATTEMPTS: 20,        // 10 -> 20 daha çok deneme
   SOCKET_TIMEOUT: 60000,                 // 60 saniye
