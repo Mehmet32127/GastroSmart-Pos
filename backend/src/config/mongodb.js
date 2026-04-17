@@ -18,6 +18,15 @@ async function connectDatabase() {
 
     logger.info('✅ MongoDB baglandı başarıyla')
 
+    // Otomatik seed: DB boşsa (ilk kurulum) ya da eksik varsayılan veri varsa doldur
+    try {
+      const { runSeed } = require('../../scripts/seed-mongodb')
+      await runSeed({ verbose: false })
+      logger.info('🌱 Veritabanı hazır (seed tamamlandı)')
+    } catch (seedErr) {
+      logger.warn(`⚠️  Auto-seed atlandı: ${seedErr.message}`)
+    }
+
     // Connection events
     mongoose.connection.on('disconnected', () => {
       logger.warn('⚠️  MongoDB baglantısı koptu')

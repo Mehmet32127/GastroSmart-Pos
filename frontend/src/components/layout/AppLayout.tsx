@@ -5,32 +5,25 @@ import { TopBar } from './TopBar'
 import { useAuthStore } from '@/store/authStore'
 import { useSocket } from '@/hooks/useSocket'
 import { useOfflineQueue } from '@/hooks/useOfflineQueue'
-import { settingsApi } from '@/api/settings'
+import { useSettingsStore } from '@/store/settingsStore'
+import { setActiveCurrency } from '@/utils/format'
 
 export const AppLayout: React.FC = () => {
   const { isAuthenticated } = useAuthStore()
   const { status } = useSocket()
   const { queue } = useOfflineQueue()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [restaurantName, setRestaurantName] = useState('GastroSmart')
-  const [logoUrl, setLogoUrl] = useState<string | undefined>()
-
-  const fetchSettings = () => {
-    settingsApi.get()
-      .then(({ data }) => {
-        if (data.data) {
-          setRestaurantName(data.data.restaurantName)
-          setLogoUrl(data.data.logoUrl)
-        }
-      })
-      .catch(() => {})
-  }
+  const { restaurantName, currency, load: loadSettings } = useSettingsStore()
 
   useEffect(() => {
-    fetchSettings()
-    window.addEventListener('settings:updated', fetchSettings)
-    return () => window.removeEventListener('settings:updated', fetchSettings)
-  }, [])
+    loadSettings()
+    const onUpdate = () => loadSettings()
+    window.addEventListener('settings:updated', onUpdate)
+    return () => window.removeEventListener('settings:updated', onUpdate)
+  }, [loadSettings])
+
+  // Para birimini global formatCurrency'e aktar
+  useEffect(() => { setActiveCurrency(currency) }, [currency])
 
   if (!isAuthenticated) return <Navigate to="/login" replace />
 
@@ -39,13 +32,12 @@ export const AppLayout: React.FC = () => {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        restaurantName={restaurantName}
       />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar
           connectionStatus={status}
           queueCount={queue.length}
-          restaurantName={restaurantName}
-          logoUrl={logoUrl}
         />
         <main className="flex-1 overflow-auto bg-[var(--color-bg)]">
           <Outlet />

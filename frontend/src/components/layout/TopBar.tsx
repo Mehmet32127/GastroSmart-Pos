@@ -9,15 +9,11 @@ import type { ConnectionStatus } from '@/hooks/useSocket'
 interface TopBarProps {
   connectionStatus: ConnectionStatus
   queueCount?: number
-  restaurantName?: string
-  logoUrl?: string
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   connectionStatus,
   queueCount = 0,
-  restaurantName = 'GastroSmart',
-  logoUrl,
 }) => {
   const { user } = useAuthStore()
   const { notifications, unreadCount, markRead, markAllRead } = useNotificationStore()
@@ -71,27 +67,13 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <header className="h-16 flex items-center px-4 gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] relative z-20">
-      {/* Restaurant brand */}
-      <div className="flex items-center gap-2.5 flex-shrink-0">
-        {logoUrl ? (
-          <img src={logoUrl} alt={restaurantName} className="w-8 h-8 rounded-lg object-cover" />
-        ) : (
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent)]/60 flex items-center justify-center">
-            <span className="text-[var(--color-accent-text)] font-display font-bold text-sm">
-              {restaurantName[0]}
-            </span>
-          </div>
+      {/* Connection status */}
+      <div className={cn('flex items-center gap-1.5 text-xs font-body flex-shrink-0', statusColor)}>
+        {statusIcon}
+        <span className="hidden sm:inline">{statusLabel}</span>
+        {queueCount > 0 && (
+          <span className="ml-1 text-amber-400 hidden sm:inline">• {queueCount} bekliyor</span>
         )}
-        <div className="hidden sm:block">
-          <p className="text-sm font-bold text-[var(--color-text)] font-display leading-tight">{restaurantName}</p>
-          <div className={cn('flex items-center gap-1 text-[10px] font-body', statusColor)}>
-            {statusIcon}
-            <span>{statusLabel}</span>
-            {queueCount > 0 && (
-              <span className="ml-1 text-amber-400">• {queueCount} bekliyor</span>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Daily ciro indicator */}

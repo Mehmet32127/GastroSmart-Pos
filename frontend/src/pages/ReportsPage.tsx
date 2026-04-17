@@ -9,11 +9,15 @@ import toast from 'react-hot-toast'
 
 const COLORS = ['#f59e0b','#22c55e','#3b82f6','#a78bfa','#ef4444','#ec4899','#14b8a6','#f97316','#64748b','#e11d48']
 
-type Period = 'daily' | 'weekly'
+type Period = 'daily' | 'weekly' | 'monthly' | 'yearly'
 const PERIODS: { key: Period; label: string }[] = [
-  { key: 'daily',  label: 'Günlük'   },
-  { key: 'weekly', label: 'Haftalık' },
+  { key: 'daily',   label: 'Günlük'   },
+  { key: 'weekly',  label: 'Haftalık' },
+  { key: 'monthly', label: 'Aylık'    },
+  { key: 'yearly',  label: 'Yıllık'   },
 ]
+
+const MONTH_NAMES = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara']
 
 export const ReportsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
@@ -23,6 +27,15 @@ export const ReportsPage: React.FC = () => {
   const [hourly, setHourly] = useState<any[]>([])
   const [waiters, setWaiters] = useState<any[]>([])
   const [exporting, setExporting] = useState<string | null>(null)
+
+  // Monthly / yearly picker state
+  const currentYear = new Date().getFullYear()
+  const currentMonth = new Date().getMonth() + 1 // 1-12
+  const [selectedYear, setSelectedYear] = useState(currentYear)
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth)
+  const [monthlyRows, setMonthlyRows] = useState<any[]>([])
+  const [yearlyRows, setYearlyRows] = useState<any[]>([])
+  const [subLoading, setSubLoading] = useState(false)
 
   const [categories, setCategories] = useState<any[]>([])
   const [categoryStats, setCategoryStats] = useState<{ id: string; name: string; icon: string; count: number; revenue: number }[]>([])
@@ -77,6 +90,38 @@ export const ReportsPage: React.FC = () => {
     load()
   }, [])
 
+  // Load monthly data (daily breakdown of a specific month)
+  useEffect(() => {
+    if (period !== 'monthly') return
+    const load = async () => {
+      setSubLoading(true)
+      try {
+        const mm = String(selectedMonth).padStart(2, '0')
+        const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate()
+        const startDate = `${selectedYear}-${mm}-01`
+        const endDate   = `${selectedYear}-${mm}-${String(daysInMonth).padStart(2, '0')}`
+        const { data } = await reportsApi.getWeeklySummaryRange(startDate, endDate)
+        setMonthlyRows(data.data || [])
+      } catch { toast.error('Aylık rapor yüklenemedi') }
+      finally { setSubLoading(false) }
+    }
+    load()
+  }, [period, selectedYear, selectedMonth])
+
+  // Load yearly data (monthly breakdown of a specific year)
+  useEffect(() => {
+    if (period !== 'yearly') return
+    const load = async () => {
+      setSubLoading(true)
+      try {
+        const { data } = await reportsApi.getMonthlySummary(selectedYear)
+        setYearlyRows(data.data?.rows || [])
+      } catch { toast.error('Yıllık rapor yüklenemedi') }
+      finally { setSubLoading(false) }
+    }
+    load()
+  }, [period, selectedYear])
+
   const handleCatClick = async (catId: string) => {
     if (selectedCatId === catId) { setSelectedCatId(null); setCatItems([]); return }
     setSelectedCatId(catId)
@@ -87,8 +132,8 @@ export const ReportsPage: React.FC = () => {
       ])
       const allItems: any[] = ti.data.data || []
       const catMenuItems: any[] = catMenuRes.data.data || []
-      const catIds = new Set(catMenuItems.map((m: any) => m.id))
-      setCatItems(allItems.filter((i: any) => catIds.has(i.menuItemId)))
+      const catIds = new Set(catMenuItems.map((m: any) => String(m.id)))
+      setCatItems(allItems.filter((i: any) => catIds.has(String(i.id))))
     } catch { toast.error('Kategori yüklenemedi') }
   }
 
@@ -107,9 +152,16 @@ export const ReportsPage: React.FC = () => {
     finally { setExporting(null) }
   }
 
-  const chartData = period === 'daily' ? hourly : weekly
+  const chartData = period === 'daily' ? hourly : period === 'weekly' ? weekly : period === 'monthly' ? monthlyRows : yearlyRows
   const chartKey = period === 'daily' ? 'revenue' : 'totalRevenue'
-  const chartLabel = (v: any) => period === 'daily' ? `${v}:00` : String(v).slice(5, 10)
+  const chartXKey = period === 'daily' ? 'hour' : period === 'yearly' ? 'month' : 'date'
+  const chartLabel = (v: any) => {
+    if (period === 'daily') return `${v}:00`
+    if (period === 'weekly' || period === 'monthly') return String(v).slice(5, 10)
+    // yearly: 'YYYY-MM' → month name
+    const monthIdx = parseInt(String(v).slice(5, 7)) - 1
+    return MONTH_NAMES[monthIdx] ?? String(v)
+  }
 
   const selectedCat = categories.find((c: any) => c.id === selectedCatId)
 
@@ -163,9 +215,9 @@ export const ReportsPage: React.FC = () => {
         <Card className="lg:col-span-2" padding="md">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <h3 className="text-sm font-semibold font-display text-[var(--color-text)]">
-              {period === 'daily' ? 'Saatlik Satış' : 'Satış Grafiği'}
+              {period === 'daily' ? 'Saatlik Satış' : period === 'weekly' ? 'Haftalık Satış' : period === 'monthly' ? 'Aylık Satış' : 'Yıllık Satış'}
             </h3>
-            <div className="flex gap-1">
+            <div className="flex gap-1 flex-wrap">
               {PERIODS.map(p => (
                 <button key={p.key} onClick={() => setPeriod(p.key)}
                   className={`px-2.5 py-1.5 rounded-xl text-xs font-body transition-colors ${
@@ -179,30 +231,114 @@ export const ReportsPage: React.FC = () => {
             </div>
           </div>
 
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barCategoryGap="20%">
-              <XAxis dataKey={period === 'daily' ? 'hour' : 'date'}
-                tickFormatter={chartLabel}
-                tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
-                axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={(v: number) => `₺${v}`}
-                tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
-                axisLine={false} tickLine={false} width={48} />
-              <Tooltip
-                cursor={{ fill: 'rgba(255,255,255,0.04)', radius: 4 }}
-                content={({ active, payload, label }: any) => {
-                  if (!active || !payload?.length) return null
+          {/* Monthly picker */}
+          {period === 'monthly' && (
+            <div className="flex items-center gap-2 mb-3">
+              <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}
+                className="bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-1.5 text-xs font-body text-[var(--color-text)] focus:outline-none">
+                {Array.from({ length: 5 }, (_, i) => currentYear - i).map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <select value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}
+                className="bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-1.5 text-xs font-body text-[var(--color-text)] focus:outline-none">
+                {MONTH_NAMES.map((name, i) => (
+                  <option key={i + 1} value={i + 1}>{name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Yearly picker */}
+          {period === 'yearly' && (
+            <div className="flex items-center gap-2 mb-3">
+              <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}
+                className="bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-1.5 text-xs font-body text-[var(--color-text)] focus:outline-none">
+                {Array.from({ length: 5 }, (_, i) => currentYear - i).map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {subLoading ? (
+            <div className="flex items-center justify-center h-[220px]"><Spinner size={32} /></div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barCategoryGap="20%">
+                <XAxis dataKey={chartXKey}
+                  tickFormatter={chartLabel}
+                  tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                  axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={(v: number) => formatCurrency(v).replace(/[₺$€£]/, v >= 1000 ? (v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : `${(v/1000).toFixed(0)}K`) : String(v))}
+                  tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                  axisLine={false} tickLine={false} width={52} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(255,255,255,0.04)', radius: 4 }}
+                  content={({ active, payload, label }: any) => {
+                    if (!active || !payload?.length) return null
+                    return (
+                      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '6px 12px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+                        <p style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 2 }}>{chartLabel(label)}</p>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent)', fontFamily: 'monospace' }}>{formatCurrency(payload[0]?.value)}</p>
+                      </div>
+                    )
+                  }}
+                />
+                <Bar dataKey={chartKey} fill="var(--color-accent)" radius={[4,4,0,0]} maxBarSize={48} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+
+          {/* Aylık özet tablo */}
+          {period === 'monthly' && !subLoading && monthlyRows.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+              <h4 className="text-xs font-semibold text-[var(--color-text-muted)] font-body mb-2">
+                {MONTH_NAMES[selectedMonth - 1]} {selectedYear} — GÜNLÜK ÖZET
+              </h4>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {monthlyRows.map((r: any) => (
+                  <div key={r.date} className="flex items-center justify-between text-xs py-1 border-b border-[var(--color-border)]/30">
+                    <span className="text-[var(--color-text-muted)] font-mono">{String(r.date).slice(5, 10)}</span>
+                    <span className="text-[var(--color-text)] font-mono">{r.totalOrders} sipariş</span>
+                    <span className="text-[var(--color-accent)] font-mono font-bold">{formatCurrency(r.totalRevenue)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between text-xs pt-2 font-bold">
+                <span className="text-[var(--color-text-muted)] font-body">Toplam</span>
+                <span className="text-[var(--color-text)] font-mono">{monthlyRows.reduce((s: number, r: any) => s + r.totalOrders, 0)} sipariş</span>
+                <span className="text-[var(--color-accent)] font-mono">{formatCurrency(monthlyRows.reduce((s: number, r: any) => s + r.totalRevenue, 0))}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Yıllık özet tablo */}
+          {period === 'yearly' && !subLoading && yearlyRows.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+              <h4 className="text-xs font-semibold text-[var(--color-text-muted)] font-body mb-2">
+                {selectedYear} — AYLIK ÖZET
+              </h4>
+              <div className="space-y-1">
+                {yearlyRows.map((r: any) => {
+                  const mIdx = parseInt(String(r.month).slice(5, 7)) - 1
                   return (
-                    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '6px 12px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-                      <p style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 2 }}>{chartLabel(label)}</p>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent)', fontFamily: 'monospace' }}>{formatCurrency(payload[0]?.value)}</p>
+                    <div key={r.month} className="flex items-center justify-between text-xs py-1 border-b border-[var(--color-border)]/30">
+                      <span className="text-[var(--color-text-muted)] font-body w-8">{MONTH_NAMES[mIdx]}</span>
+                      <span className="text-[var(--color-text)] font-mono">{r.totalOrders} sipariş</span>
+                      <span className="text-[var(--color-text-muted)] font-mono">{formatCurrency(r.averageOrderValue)} ort.</span>
+                      <span className="text-[var(--color-accent)] font-mono font-bold">{formatCurrency(r.totalRevenue)}</span>
                     </div>
                   )
-                }}
-              />
-              <Bar dataKey={chartKey} fill="var(--color-accent)" radius={[4,4,0,0]} maxBarSize={48} />
-            </BarChart>
-          </ResponsiveContainer>
+                })}
+              </div>
+              <div className="flex justify-between text-xs pt-2 font-bold">
+                <span className="text-[var(--color-text-muted)] font-body">Toplam</span>
+                <span className="text-[var(--color-text)] font-mono">{yearlyRows.reduce((s: number, r: any) => s + r.totalOrders, 0)} sipariş</span>
+                <span className="text-[var(--color-accent)] font-mono">{formatCurrency(yearlyRows.reduce((s: number, r: any) => s + r.totalRevenue, 0))}</span>
+              </div>
+            </div>
+          )}
 
           {/* Garson performansı */}
           {waiters.length > 0 && (

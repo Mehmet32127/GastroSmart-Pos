@@ -179,6 +179,52 @@ router.get('/weekly', authenticate, mgr, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ── GET /api/reports/monthly ──────────────────────────────────────────────────
+// Belirli bir yılın her ayı için ciro özeti (aylık rapor + yıllık grafik)
+// ?year=2025  (varsayılan: Istanbul saatine göre bu yıl)
+router.get('/monthly', authenticate, mgr, async (req, res, next) => {
+  try {
+    const currentYear = parseInt(
+      new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Istanbul' }).format(new Date()).slice(0, 4)
+    )
+    const year = parseInt(req.query.year ?? currentYear)
+    if (isNaN(year) || year < 2000 || year > 2100) return fail(res, 'Geçersiz yıl', 400)
+
+    const start = new Date(`${year}-01-01T00:00:00.000Z`)
+    start.setTime(start.getTime() - TZ_OFFSET_MS)
+    const end = new Date(`${year}-12-31T23:59:59.999Z`)
+    end.setTime(end.getTime() - TZ_OFFSET_MS)
+
+    const rows = await Order.aggregate([
+      { $match: { status: 'closed', closed_at: { $gte: start, $lte: end } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m', date: '$closed_at', timezone: 'Europe/Istanbul' },
+          },
+          totalRevenue:      { $sum: '$total' },
+          totalOrders:       { $sum: 1 },
+          cashRevenue: { $sum: {
+            $cond: [{ $eq: ['$payment_method', 'cash'] }, '$total',
+              { $cond: [{ $eq: ['$payment_method', 'mixed'] }, { $ifNull: ['$cash_amount', 0] }, 0] }
+            ]
+          }},
+          averageOrderValue: { $avg: '$total' },
+        },
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          _id: 0, month: '$_id',
+          totalRevenue: 1, totalOrders: 1, cashRevenue: 1, averageOrderValue: 1,
+        },
+      },
+    ])
+
+    return ok(res, { year, rows })
+  } catch (err) { next(err) }
+})
+
 // ── GET /api/reports/hourly ───────────────────────────────────────────────────
 router.get('/hourly', authenticate, mgr, async (req, res, next) => {
   try {

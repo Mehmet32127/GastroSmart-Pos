@@ -71,6 +71,7 @@ router.post('/', authenticate, authorize('admin'), async (req, res, next) => {
 router.patch('/:id', authenticate, authorize('admin'), async (req, res, next) => {
   try {
     const schema = z.object({
+      username: z.string().min(3).max(32).optional(),
       fullName: z.string().min(2).optional(),
       role:     z.enum(['admin', 'manager', 'waiter']).optional(),
       email:    z.string().email().optional(),
@@ -82,6 +83,16 @@ router.patch('/:id', authenticate, authorize('admin'), async (req, res, next) =>
     const user = await User.findById(req.params.id)
     if (!user) return fail(res, 'Kullanıcı bulunamadı', 404)
 
+    if (data.username !== undefined) {
+      const newUsername = data.username.toLowerCase().trim()
+      if (newUsername !== user.username) {
+        const exists = await User.findOne({ username: newUsername, _id: { $ne: user._id } })
+        if (exists) return fail(res, 'Bu kullanıcı adı zaten kullanılıyor', 409)
+        user.username = newUsername
+        // Kullanıcı adı değişince token'ları iptal et → tekrar giriş gerekir
+        await revokeAllUserTokens(user._id.toString())
+      }
+    }
     if (data.fullName !== undefined) user.full_name = data.fullName
     if (data.role     !== undefined) user.role      = data.role
     if (data.email    !== undefined) user.email     = data.email

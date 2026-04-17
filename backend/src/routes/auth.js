@@ -1,7 +1,5 @@
 const router = require('express').Router()
 const { z } = require('zod')
-const nodemailer = require('nodemailer')
-const rateLimit = require('express-rate-limit')
 const User = require('../models/User')
 const {
   generateAccessToken,
@@ -13,34 +11,6 @@ const {
 const { authenticate } = require('../middleware/auth')
 const { ok, fail } = require('../utils/response')
 const logger = require('../utils/logger')
-
-const forgotPasswordLimit = rateLimit({
-  windowMs: 60 * 60 * 1000,  // 1 saat
-  max: 5,
-  message: { success: false, error: 'Çok fazla istek. 1 saat sonra tekrar deneyin.' },
-  keyGenerator: (req) => req.ip,
-  standardHeaders: true,
-  legacyHeaders: false,
-})
-
-// ── Mailer ────────────────────────────────────────────────────────────────────
-function getMailer() {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return null
-  return nodemailer.createTransport({
-    host:   process.env.SMTP_HOST || 'smtp.gmail.com',
-    port:   parseInt(process.env.SMTP_PORT) || 587,
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  })
-}
-
-function randomPassword() {
-  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
-  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-}
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Kullanıcı adı gerekli'),
@@ -162,56 +132,6 @@ router.post('/change-password', authenticate, async (req, res, next) => {
 
     logger.info(`✅ Şifre değiştirildi: ${user.username}`)
     return ok(res, null, 'Şifre güncellendi')
-  } catch (err) {
-    next(err)
-  }
-})
-
-// ── POST /api/auth/forgot-password ───────────────────────────────────────────
-router.post('/forgot-password', forgotPasswordLimit, async (req, res, next) => {
-  try {
-    const { email } = z.object({ email: z.string().email() }).parse(req.body)
-
-    const user = await User.findOne({ email: email.toLowerCase().trim() })
-    // Güvenlik: kullanıcı bulunsun ya da bulunmasın aynı mesajı dön
-    if (!user || !user.is_active) {
-      return ok(res, null, 'E-posta adresinize bilgi gönderildi')
-    }
-
-    const mailer = getMailer()
-    if (!mailer) {
-      return fail(res, 'E-posta servisi yapılandırılmamış. Lütfen yöneticinize başvurun.', 503)
-    }
-
-    const newPassword = randomPassword()
-
-    // Mail önce gönder — başarısız olursa şifre değişmemiş olur
-    await mailer.sendMail({
-      from:    process.env.SMTP_FROM || process.env.SMTP_USER,
-      to:      user.email,
-      subject: 'GastroSmart POS — Şifre Sıfırlama',
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto">
-          <h2 style="color:#f59e0b">GastroSmart POS</h2>
-          <p>Merhaba <strong>${user.full_name}</strong>,</p>
-          <p>Hesabınız için yeni bir şifre oluşturuldu:</p>
-          <div style="background:#f3f4f6;padding:16px;border-radius:8px;margin:16px 0">
-            <p style="margin:0 0 8px">Kullanıcı Adı: <strong>${user.username}</strong></p>
-            <p style="margin:0">Yeni Şifre: <strong style="font-size:18px;letter-spacing:2px">${newPassword}</strong></p>
-          </div>
-          <p>Giriş yaptıktan sonra şifrenizi değiştirmenizi öneririz.</p>
-          <p style="color:#9ca3af;font-size:12px">Bu e-postayı siz talep etmediyseniz lütfen yöneticinize bildirin.</p>
-        </div>
-      `,
-    })
-
-    // Mail başarılı → şimdi şifreyi kaydet
-    user.password_hash = newPassword
-    await user.save()
-    await revokeAllUserTokens(user._id.toString())
-
-    logger.info(`✅ Şifre sıfırlama maili gönderildi: ${user.username}`)
-    return ok(res, null, 'E-posta adresinize yeni şifreniz gönderildi')
   } catch (err) {
     next(err)
   }

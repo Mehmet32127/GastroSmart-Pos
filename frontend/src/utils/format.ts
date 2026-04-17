@@ -6,10 +6,17 @@ const TZ = 'Europe/Istanbul'
 const toDate = (date: string | Date): Date =>
   typeof date === 'string' ? new Date(date) : date
 
-export const formatCurrency = (amount: number): string =>
-  // currency: 'TRY' bazı Android WebView ve eski Electron sürümlerinde ₺ sembolünü
-  // boş bırakabiliyor. Sembolü direkt yazarak tüm ortamlarda tutarlı görünüm sağlıyoruz.
-  '₺' + new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)
+// Ayarlardan dinamik para birimi — setActiveCurrency() ile güncellenir
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  TRY: '₺', USD: '$', EUR: '€', GBP: '£',
+}
+let _activeCurrency = 'TRY'
+export const setActiveCurrency = (currency: string) => { _activeCurrency = currency }
+
+export const formatCurrency = (amount: number): string => {
+  const symbol = CURRENCY_SYMBOLS[_activeCurrency] ?? _activeCurrency
+  return symbol + new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)
+}
 
 export const formatDate = (date: string | Date): string =>
   new Intl.DateTimeFormat('tr-TR', {

@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   printReceipt: (html, printerName, paperWidth) =>
     ipcRenderer.invoke('print:receipt', { html, printerName, paperWidth }),
 
+  // Sistem tepsisi ikonunu güncelle (logo değişince)
+  updateTrayIcon: (logoUrl) => ipcRenderer.invoke('tray:update-icon', logoUrl),
+
   // Electron ortamında olup olmadığını kontrol et
   isElectron: true,
 })

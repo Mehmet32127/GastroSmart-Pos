@@ -34,10 +34,12 @@ interface SidebarProps {
   onToggle: () => void
   pendingOrders?: number
   pendingReservations?: number
+  restaurantName?: string
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   collapsed, onToggle, pendingOrders = 0, pendingReservations = 0,
+  restaurantName = 'GastroSmart',
 }) => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -64,12 +66,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
     )}>
       {/* Logo */}
       <div className={cn('flex items-center h-16 px-4 border-b border-[var(--color-border)]', collapsed ? 'justify-center' : 'gap-3')}>
-        <div className="w-8 h-8 rounded-xl bg-[var(--color-accent)] flex items-center justify-center flex-shrink-0 shadow-glow-brand">
-          <span className="text-[var(--color-accent-text)] font-display font-bold text-sm">G</span>
+        <div className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden shadow-glow-brand bg-[var(--color-accent)] flex items-center justify-center">
+          <img
+            src="/logo.png"
+            alt="logo"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const img = e.currentTarget
+              img.style.display = 'none'
+              const fb = img.nextElementSibling as HTMLElement | null
+              if (fb) fb.style.display = 'flex'
+            }}
+          />
+          <span
+            style={{ display: 'none' }}
+            className="w-full h-full items-center justify-center text-[var(--color-accent-text)] font-display font-bold text-sm select-none"
+          >
+            {restaurantName?.[0]?.toUpperCase() || 'G'}
+          </span>
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <p className="font-display font-bold text-sm text-[var(--color-text)] truncate leading-tight">GastroSmart</p>
+            <p className="font-display font-bold text-sm text-[var(--color-text)] truncate leading-tight">{restaurantName}</p>
             <p className="text-[10px] text-[var(--color-text-muted)] font-body uppercase tracking-widest truncate">POS System</p>
           </div>
         )}

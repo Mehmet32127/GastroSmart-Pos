@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Plus, Minus, Trash2, MessageSquare, X, ChevronLeft, ShoppingBag } from 'lucide-react'
+import { Search, Plus, Minus, Trash2, MessageSquare, X, ChevronLeft, ShoppingBag, Ban } from 'lucide-react'
 import { cn, formatCurrency } from '@/utils/format'
 import { Input } from '@/components/ui/Input'
 import { useOrderStore } from '@/store/orderStore'
@@ -25,6 +25,8 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [editNoteItemId, setEditNoteItemId] = useState<string | null>(null)
   const [noteText, setNoteText] = useState('')
+  const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [cancelLoading, setCancelLoading] = useState(false)
   const guestCount = 1  // Varsayılan 1; sipariş açıldıktan sonra güncellenebilir
 
   const { subtotal, taxTotal, total } = calculateTotals()
@@ -104,6 +106,26 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
     } catch { toast.error('Silinemedi') }
   }
 
+  const handleCancelOrder = async () => {
+    if (cancelLoading) return
+    // currentOrder yoksa ama masada sipariş ID'si varsa onu kullan
+    const orderId = currentOrder?.id ?? table.currentOrderId
+    if (!orderId) { onClose(); return }
+    setCancelLoading(true)
+    try {
+      await ordersApi.cancel(orderId)
+      toast.success('Masa boşaltıldı')
+      setCurrentOrder(null)
+      onClose()
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'İptal edilemedi'
+      toast.error(msg)
+    } finally {
+      setCancelLoading(false)
+      setCancelConfirm(false)
+    }
+  }
+
   const handleSaveNote = async (itemId: string) => {
     if (!currentOrder) return
     try {
@@ -134,7 +156,27 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
                   {activeItems.length === 0 ? 'Henüz sipariş yok' : `${activeItems.length} ürün`}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                {/* Masayı İptal Et */}
+                {!cancelConfirm ? (
+                  <button onClick={() => setCancelConfirm(true)}
+                    title="Masayı İptal Et"
+                    className="p-3 rounded-2xl text-[var(--color-text-muted)] hover:bg-red-500/10 hover:text-red-400 transition-colors">
+                    <Ban size={20} />
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 rounded-2xl px-3 py-2">
+                    <span className="text-sm text-red-400 font-body font-medium">Masayı iptal et?</span>
+                    <button onClick={handleCancelOrder} disabled={cancelLoading}
+                      className="px-3 py-1 rounded-xl bg-red-500 text-white text-xs font-bold hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
+                      {cancelLoading ? '...' : 'Evet'}
+                    </button>
+                    <button onClick={() => setCancelConfirm(false)} disabled={cancelLoading}
+                      className="px-3 py-1 rounded-xl bg-[var(--color-surface2)] text-[var(--color-text-muted)] text-xs font-body hover:bg-[var(--color-border)] disabled:opacity-40 transition-colors">
+                      Hayır
+                    </button>
+                  </div>
+                )}
                 <button onClick={onClose}
                   className="p-3 rounded-2xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] transition-colors">
                   <X size={22} />
@@ -242,7 +284,7 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
         ) : (
           <>
             {/* Menü başlık */}
-            <div className="flex items-center gap-4 px-6 py-5 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex-shrink-0">
+            <div className="flex items-center gap-4 px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex-shrink-0">
               <button onClick={() => setView('order')}
                 className="p-3 rounded-2xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)] transition-colors">
                 <ChevronLeft size={22} />
@@ -254,38 +296,42 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
               </div>
             </div>
 
-            {/* Kategori tabs */}
-            <div className="flex gap-2 px-4 py-3 overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-surface)] flex-shrink-0">
-              {categories.map(cat => (
-                <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
-                  className={cn(
-                    'flex-shrink-0 px-4 py-2.5 rounded-2xl text-sm font-medium whitespace-nowrap transition-all duration-200',
-                    selectedCategory === cat.id
-                      ? 'bg-[var(--color-accent)] text-[var(--color-accent-text)]'
-                      : 'bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-                  )}>
-                  {cat.icon} {cat.name}
-                </button>
-              ))}
-            </div>
-
-            {/* Ürün grid — büyük, tablet dostu */}
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="grid grid-cols-2 gap-3">
-                {filteredItems.map(item => (
-                  <button key={item.id} onClick={() => handleAddItem(item)}
-                    disabled={isLoading}
+            {/* Gövde: sol kategori listesi + sağ ürün grid */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Sol: Kategori listesi — tümü görünür, kaydırmalı */}
+              <div className="w-36 flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] overflow-y-auto flex flex-col gap-0.5 p-2">
+                {categories.map(cat => (
+                  <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
                     className={cn(
-                      'flex flex-col p-5 rounded-2xl text-left transition-all duration-150 min-h-[100px]',
-                      'bg-[var(--color-surface)] border-2 border-[var(--color-border)]',
-                      'hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface2)]',
-                      'active:scale-95 active:border-[var(--color-accent)]',
-                      'disabled:opacity-40 disabled:cursor-not-allowed'
+                      'w-full text-left px-3 py-2.5 rounded-xl text-sm font-body transition-all duration-150',
+                      selectedCategory === cat.id
+                        ? 'bg-[var(--color-accent)] text-[var(--color-accent-text)]'
+                        : 'bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)]'
                     )}>
-                    <p className="text-base font-semibold text-[var(--color-text)] font-body leading-snug mb-2 line-clamp-2">{item.name}</p>
-                    <p className="text-lg font-bold text-[var(--color-accent)] font-mono mt-auto">{formatCurrency(item.price)}</p>
+                    <span className="mr-1.5">{cat.icon}</span>
+                    <span className="leading-snug">{cat.name}</span>
                   </button>
                 ))}
+              </div>
+
+              {/* Sağ: Ürün grid — 2 sütun, tablet dostu */}
+              <div className="flex-1 overflow-y-auto p-3">
+                <div className="grid grid-cols-2 gap-2.5">
+                  {filteredItems.map(item => (
+                    <button key={item.id} onClick={() => handleAddItem(item)}
+                      disabled={isLoading}
+                      className={cn(
+                        'flex flex-col p-4 rounded-2xl text-left transition-all duration-150 min-h-[90px]',
+                        'bg-[var(--color-surface)] border-2 border-[var(--color-border)]',
+                        'hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface2)]',
+                        'active:scale-95 active:border-[var(--color-accent)]',
+                        'disabled:opacity-40 disabled:cursor-not-allowed'
+                      )}>
+                      <p className="text-sm font-semibold text-[var(--color-text)] font-body leading-snug mb-1.5 line-clamp-2">{item.name}</p>
+                      <p className="text-base font-bold text-[var(--color-accent)] font-mono mt-auto">{formatCurrency(item.price)}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </>

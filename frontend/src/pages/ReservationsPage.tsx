@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Plus, ChevronLeft, ChevronRight, Phone, Users, DollarSign, Trash2, Edit2, Check, X } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Phone, Users, DollarSign, Trash2, Edit2 } from 'lucide-react'
 import { ReservationModal } from '@/components/reservations/ReservationModal'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -13,11 +13,11 @@ import type { Reservation, ReservationStatus } from '@/types'
 import toast from 'react-hot-toast'
 
 const STATUS_MAP: Record<ReservationStatus, { label: string; variant: 'warning' | 'success' | 'danger' | 'muted' }> = {
-  pending:   { label: 'Bekliyor',   variant: 'warning' },
-  confirmed: { label: 'Onaylandı',  variant: 'success' },
-  seated:    { label: 'Masada',     variant: 'success' },
-  cancelled: { label: 'İptal',      variant: 'danger' },
-  completed: { label: 'Tamamlandı', variant: 'muted' },
+  pending:   { label: 'Bekliyor',  variant: 'warning' },
+  confirmed: { label: 'Onaylandı', variant: 'success' },
+  seated:    { label: 'Masada',    variant: 'success' },
+  cancelled: { label: 'İptal',     variant: 'danger' },
+  completed: { label: 'Geçmiş',    variant: 'muted' },
 }
 
 export const ReservationsPage: React.FC = () => {
@@ -190,7 +190,7 @@ export const ReservationsPage: React.FC = () => {
 
         {/* Status filter */}
         <div className="flex gap-1.5 px-5 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface)] overflow-x-auto">
-          {(['all', 'pending', 'confirmed', 'cancelled', 'completed'] as const).map((s) => (
+          {(['all', 'confirmed', 'completed'] as const).map((s) => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={cn(
                 'px-3 py-1.5 rounded-xl text-xs font-medium font-body whitespace-nowrap transition-all duration-200 border',
@@ -246,7 +246,7 @@ export const ReservationsPage: React.FC = () => {
                           <Users size={10} /> {res.guestCount} kişi
                         </span>
                         {res.tableName && <span>📍 {res.tableName}</span>}
-                        {res.deposit && (
+                        {!!res.deposit && (
                           <span className="flex items-center gap-1 text-amber-400">
                             <DollarSign size={10} />
                             {formatCurrency(res.deposit)} kapora
@@ -262,25 +262,7 @@ export const ReservationsPage: React.FC = () => {
 
                     {/* Actions */}
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      {res.status === 'pending' && (
-                        <>
-                          <button onClick={() => handleStatusChange(res.id, 'confirmed')}
-                            className="p-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors" title="Onayla">
-                            <Check size={14} />
-                          </button>
-                          <button onClick={() => handleStatusChange(res.id, 'cancelled')}
-                            className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors" title="İptal">
-                            <X size={14} />
-                          </button>
-                        </>
-                      )}
-                      {res.status === 'confirmed' && (
-                        <button onClick={() => handleStatusChange(res.id, 'completed')}
-                          className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors" title="Tamamla">
-                          <Check size={14} />
-                        </button>
-                      )}
-                      {res.deposit && res.depositPaid && !res.depositRefunded && res.status === 'cancelled' && (
+                      {!!res.deposit && res.depositPaid && !res.depositRefunded && res.status === 'cancelled' && (
                         <button onClick={() => handleRefund(res.id)}
                           className="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors text-xs font-body">
                           İade
@@ -304,6 +286,7 @@ export const ReservationsPage: React.FC = () => {
       </div>
 
       <ReservationModal
+        key={modalOpen ? (editReservation?.id ?? 'new') : 'closed'}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         reservation={editReservation}

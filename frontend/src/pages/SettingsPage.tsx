@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Save, Upload, X, Building2, Phone, FileText, Globe, Receipt, Printer } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Save, Building2, Phone, FileText, Globe, Receipt, Printer } from 'lucide-react'
 import { Card } from '@/components/ui/common'
 import { Button } from '@/components/ui/Button'
 import { settingsApi } from '@/api/settings'
-import { CONFIG } from '@/config'
+import { setActiveCurrency } from '@/utils/format'
 import toast from 'react-hot-toast'
 
 interface SettingsData {
   restaurantName: string
-  logoUrl?: string
   address: string
   phone: string
   taxNo: string
@@ -21,9 +20,8 @@ const CURRENCIES = ['TRY', 'USD', 'EUR', 'GBP']
 const TIMEZONES  = ['Europe/Istanbul', 'Europe/London', 'Europe/Berlin', 'America/New_York']
 
 export const SettingsPage: React.FC = () => {
-  const [data, setData]         = useState<SettingsData>({
+  const [data, setData] = useState<SettingsData>({
     restaurantName: '',
-    logoUrl:        undefined,
     address:        '',
     phone:          '',
     taxNo:          '',
@@ -31,28 +29,13 @@ export const SettingsPage: React.FC = () => {
     currency:       'TRY',
     timezone:       'Europe/Istanbul',
   })
-  const [loading, setLoading]         = useState(true)
-  const [saving, setSaving]           = useState(false)
-  const [logoPreview, setLogoPreview] = useState<string | undefined>()
-  const [logoFile, setLogoFile]       = useState<File | null>(null)
-  const [uploading, setUploading]     = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving]   = useState(false)
 
   // Yazıcı ayarları — localStorage'da tutulur (sunucu gerektirmez)
-  const [printerName, setPrinterName] = useState(() => localStorage.getItem('gastro_printer_name') ?? '')
-  const [paperWidth, setPaperWidth]   = useState<'58mm' | '80mm'>(() =>
+  const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>(() =>
     (localStorage.getItem('gastro_paper_width') as '58mm' | '80mm') ?? '80mm'
   )
-  const [sysPrinters, setSysPrinters] = useState<{ name: string; isDefault: boolean }[]>([])
-  const isElectron = !!(window as unknown as { electronAPI?: { isElectron: boolean } }).electronAPI?.isElectron
-
-  // Electron yazıcı listesini yükle
-  useEffect(() => {
-    if (isElectron) {
-      const api = (window as unknown as { electronAPI: { getPrinters: () => Promise<{ name: string; isDefault: boolean }[]> } }).electronAPI
-      api.getPrinters().then(list => setSysPrinters(list)).catch(() => {})
-    }
-  }, [isElectron])
 
   useEffect(() => {
     settingsApi.get()
@@ -61,7 +44,6 @@ export const SettingsPage: React.FC = () => {
           const s = res.data
           setData({
             restaurantName: s.restaurantName ?? '',
-            logoUrl:        s.logoUrl ?? undefined,
             address:        s.address ?? '',
             phone:          s.phone ?? '',
             taxNo:          s.taxNo ?? '',
@@ -69,46 +51,11 @@ export const SettingsPage: React.FC = () => {
             currency:       s.currency ?? 'TRY',
             timezone:       s.timezone ?? 'Europe/Istanbul',
           })
-          if (s.logoUrl) setLogoPreview(`${CONFIG.API_BASE}${s.logoUrl}`)
         }
       })
       .catch(() => toast.error('Ayarlar yüklenemedi'))
       .finally(() => setLoading(false))
   }, [])
-
-  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setLogoFile(file)
-    setLogoPreview(URL.createObjectURL(file))
-  }
-
-  const handleLogoRemove = () => {
-    setLogoFile(null)
-    setLogoPreview(undefined)
-    setData(d => ({ ...d, logoUrl: undefined }))
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handleLogoUpload = async () => {
-    if (!logoFile) return
-    setUploading(true)
-    try {
-      const { data: res } = await settingsApi.uploadLogo(logoFile)
-      if (res.data) {
-        const url = `${CONFIG.API_BASE}${res.data.url}`
-        setLogoPreview(url)
-        setData(d => ({ ...d, logoUrl: res.data!.url }))
-        setLogoFile(null)
-        toast.success('Logo yüklendi')
-        window.dispatchEvent(new CustomEvent('settings:updated'))
-      }
-    } catch {
-      toast.error('Logo yüklenemedi')
-    } finally {
-      setUploading(false)
-    }
-  }
 
   const handleSave = async () => {
     if (!data.restaurantName.trim()) {
@@ -117,9 +64,6 @@ export const SettingsPage: React.FC = () => {
     }
     setSaving(true)
     try {
-      // Upload logo first if a new file was selected
-      if (logoFile) await handleLogoUpload()
-
       await settingsApi.update({
         restaurantName: data.restaurantName.trim(),
         address:        data.address.trim(),
@@ -129,9 +73,8 @@ export const SettingsPage: React.FC = () => {
         currency:       data.currency,
         timezone:       data.timezone,
       })
-      // Yazıcı tercihleri localStorage'a kaydet
-      localStorage.setItem('gastro_printer_name', printerName)
-      localStorage.setItem('gastro_paper_width',  paperWidth)
+      localStorage.setItem('gastro_paper_width', paperWidth)
+      setActiveCurrency(data.currency)
       toast.success('Ayarlar kaydedildi')
       window.dispatchEvent(new CustomEvent('settings:updated'))
     } catch {
@@ -161,72 +104,12 @@ export const SettingsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold font-display text-[var(--color-text)]">Restoran Ayarları</h1>
-          <p className="text-sm text-[var(--color-text-muted)] font-body">Logo, isim ve genel bilgiler</p>
+          <p className="text-sm text-[var(--color-text-muted)] font-body">Genel bilgiler ve sistem ayarları</p>
         </div>
         <Button icon={<Save size={16} />} loading={saving} onClick={handleSave}>
           Kaydet
         </Button>
       </div>
-
-      {/* Logo */}
-      <Card>
-        <h2 className="text-sm font-semibold font-display text-[var(--color-text)] mb-4">Logo</h2>
-        <div className="flex items-center gap-5">
-          {/* Preview */}
-          <div className="relative flex-shrink-0">
-            {logoPreview ? (
-              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-[var(--color-border)]">
-                <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
-                <button
-                  onClick={handleLogoRemove}
-                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
-                >
-                  <X size={10} className="text-white" />
-                </button>
-              </div>
-            ) : (
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent)]/60 flex items-center justify-center border border-[var(--color-border)]">
-                <span className="text-[var(--color-accent-text)] font-display font-black text-2xl">
-                  {data.restaurantName?.[0]?.toUpperCase() || 'G'}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Upload controls */}
-          <div className="space-y-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/svg+xml"
-              className="hidden"
-              onChange={handleLogoSelect}
-            />
-            <Button
-              variant="secondary"
-              icon={<Upload size={14} />}
-              onClick={() => fileInputRef.current?.click()}
-              size="sm"
-            >
-              {logoPreview ? 'Logo Değiştir' : 'Logo Yükle'}
-            </Button>
-            {logoFile && (
-              <Button
-                variant="primary"
-                icon={<Save size={14} />}
-                loading={uploading}
-                onClick={handleLogoUpload}
-                size="sm"
-              >
-                Logoyu Kaydet
-              </Button>
-            )}
-            <p className="text-xs text-[var(--color-text-muted)] font-body">
-              PNG, JPG, WebP veya SVG · Maks 5 MB
-            </p>
-          </div>
-        </div>
-      </Card>
 
       {/* Restaurant Info */}
       <Card>
@@ -332,7 +215,6 @@ export const SettingsPage: React.FC = () => {
           <Printer size={16} className="text-[var(--color-accent)]" /> Termal Yazıcı
         </h2>
         <div className="space-y-4">
-          {/* Kağıt boyutu */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">Kağıt Boyutu</label>
             <div className="flex gap-2">
@@ -349,42 +231,13 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Yazıcı seçimi — sadece Electron'da */}
-          {isElectron && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">Varsayılan Yazıcı</label>
-              {sysPrinters.length > 0 ? (
-                <select
-                  value={printerName}
-                  onChange={e => setPrinterName(e.target.value)}
-                  className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm font-body text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50 transition-colors"
-                >
-                  <option value="">— Varsayılan sistem yazıcısı —</option>
-                  {sysPrinters.map(p => (
-                    <option key={p.name} value={p.name}>
-                      {p.name}{p.isDefault ? ' (varsayılan)' : ''}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <p className="text-xs text-[var(--color-text-muted)] font-body py-2">
-                  Yazıcı bulunamadı. USB yazıcınızın bağlı ve sürücüsünün kurulu olduğundan emin olun.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Tarayıcı modu için ipucu */}
-          {!isElectron && (
-            <div className="rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] p-3 text-xs text-[var(--color-text-muted)] font-body space-y-1">
-              <p className="font-semibold text-[var(--color-text)]">Tarayıcıdan Termal Yazıcı Kullanımı</p>
-              <p>1. Fiş ekranında <strong>Yazdır</strong> butonuna tıklayın</p>
-              <p>2. Yazıcı listesinden termal yazıcınızı seçin</p>
-              <p>3. Kağıt boyutunu <strong>{paperWidth}</strong> olarak ayarlayın</p>
-              <p>4. Kenar boşluklarını <strong>Yok</strong> yapın</p>
-              <p className="text-[var(--color-accent)]">💡 Electron masaüstü uygulamasında yazıcı seçimi ve sessiz yazdırma desteklenir.</p>
-            </div>
-          )}
+          <div className="rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] p-3 text-xs text-[var(--color-text-muted)] font-body space-y-1">
+            <p className="font-semibold text-[var(--color-text)]">Termal Yazıcı Kullanımı</p>
+            <p>1. Fiş ekranında <strong>Yazdır</strong> butonuna tıklayın</p>
+            <p>2. Yazıcı listesinden termal yazıcınızı seçin</p>
+            <p>3. Kağıt boyutunu <strong>{paperWidth}</strong> olarak ayarlayın</p>
+            <p>4. Kenar boşluklarını <strong>Yok</strong> yapın</p>
+          </div>
         </div>
       </Card>
 

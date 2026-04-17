@@ -39,6 +39,7 @@ export const MenuPage: React.FC = () => {
   const [catIcon, setCatIcon] = useState('🍽️')
   const [editItem, setEditItem] = useState<MenuItem | undefined>()
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null)
+  const [deleteCatId, setDeleteCatId] = useState<string | null>(null)
   const [stockModalItem, setStockModalItem] = useState<MenuItem | null>(null)
   const [stockAdjust, setStockAdjust] = useState('')
 
@@ -109,6 +110,17 @@ export const MenuPage: React.FC = () => {
     } catch { toast.error('Kategori eklenemedi') }
   }
 
+  const handleDeleteCategory = async () => {
+    if (!deleteCatId) return
+    try {
+      await menuApi.deleteCategory(deleteCatId)
+      toast.success('Kategori silindi')
+      setDeleteCatId(null)
+      if (selectedCategory === deleteCatId) setSelectedCategory('all')
+      load()
+    } catch { toast.error('Kategori silinemedi — içinde ürün olabilir') }
+  }
+
   const handleStockUpdate = async (operation: 'set' | 'add' | 'subtract') => {
     if (!stockModalItem) return
     try {
@@ -151,15 +163,23 @@ export const MenuPage: React.FC = () => {
           {categories.map((cat) => {
             const count = items.filter(i => i.categoryId === cat.id).length
             return (
-              <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
-                className={cn('w-full text-left px-3 py-2 rounded-xl text-sm font-body transition-colors flex items-center justify-between',
-                  selectedCategory === cat.id
-                    ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
-                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)]'
-                )}>
-                <span><span className="mr-2">{cat.icon}</span>{cat.name}</span>
-                <span className="text-xs opacity-60">{count}</span>
-              </button>
+              <div key={cat.id} className="group flex items-center gap-0.5">
+                <button onClick={() => setSelectedCategory(cat.id)}
+                  className={cn('flex-1 min-w-0 text-left px-3 py-2 rounded-xl text-sm font-body transition-colors flex items-center justify-between',
+                    selectedCategory === cat.id
+                      ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
+                      : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)]'
+                  )}>
+                  <span className="truncate"><span className="mr-2">{cat.icon}</span>{cat.name}</span>
+                  <span className="text-xs opacity-60 ml-1 flex-shrink-0 group-hover:hidden">{count}</span>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDeleteCatId(cat.id) }}
+                  className="flex-shrink-0 p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                  title="Kategoriyi sil">
+                  <Trash2 size={12} />
+                </button>
+              </div>
             )
           })}
         </div>
@@ -291,20 +311,21 @@ export const MenuPage: React.FC = () => {
       </Modal>
 
       {/* Stock Modal */}
-      <Modal isOpen={!!stockModalItem} onClose={() => setStockModalItem(null)}
-        title="Stok Güncelle" size="sm">
+      <Modal isOpen={!!stockModalItem} onClose={() => { setStockModalItem(null); setStockAdjust('') }}
+        title="Stok Güncelle" size="sm"
+        footer={<>
+          <Button variant="secondary" onClick={() => { setStockModalItem(null); setStockAdjust('') }}>İptal</Button>
+          <Button onClick={() => handleStockUpdate('set')} disabled={!stockAdjust}>Kaydet</Button>
+        </>}>
         {stockModalItem && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <p className="text-sm text-[var(--color-text-muted)] font-body">
-              <strong className="text-[var(--color-text)]">{stockModalItem.name}</strong> · Mevcut: {stockModalItem.stock} {stockModalItem.unit}
+              <strong className="text-[var(--color-text)]">{stockModalItem.name}</strong>
+              <span className="ml-2">· Mevcut: <strong className="text-[var(--color-accent)]">{stockModalItem.stock} {stockModalItem.unit}</strong></span>
             </p>
-            <Input label="Miktar" type="number" step="0.1" value={stockAdjust}
-              onChange={(e) => setStockAdjust(e.target.value)} />
-            <div className="grid grid-cols-3 gap-2">
-              <Button variant="secondary" size="sm" onClick={() => handleStockUpdate('set')}>Ayarla</Button>
-              <Button variant="success" size="sm" onClick={() => handleStockUpdate('add')}>+ Ekle</Button>
-              <Button variant="danger" size="sm" onClick={() => handleStockUpdate('subtract')}>- Çıkar</Button>
-            </div>
+            <Input label="Yeni Miktar" type="number" step="0.1" min="0"
+              value={stockAdjust} onChange={(e) => setStockAdjust(e.target.value)}
+              onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' && stockAdjust) handleStockUpdate('set') }} />
           </div>
         )}
       </Modal>
@@ -312,6 +333,10 @@ export const MenuPage: React.FC = () => {
       <ConfirmDialog isOpen={!!deleteItemId} onConfirm={handleDeleteItem}
         onCancel={() => setDeleteItemId(null)} title="Ürün Sil"
         message="Bu ürünü silmek istediğinizden emin misiniz?" confirmText="Sil" danger />
+
+      <ConfirmDialog isOpen={!!deleteCatId} onConfirm={handleDeleteCategory}
+        onCancel={() => setDeleteCatId(null)} title="Kategori Sil"
+        message="Bu kategoriyi silmek istediğinizden emin misiniz? İçindeki ürünler kategorisiz kalır." confirmText="Sil" danger />
 
       {/* Kategori Modal */}
       <Modal isOpen={catModalOpen} onClose={() => setCatModalOpen(false)}

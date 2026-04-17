@@ -8,6 +8,12 @@ export const reportsApi = {
   getWeeklySummary: (startDate?: string) =>
     client.get<ApiResponse<DailySummary[]>>('/reports/weekly', { params: { startDate } }),
 
+  getWeeklySummaryRange: (startDate: string, endDate: string) =>
+    client.get<ApiResponse<DailySummary[]>>('/reports/weekly', { params: { startDate, endDate } }),
+
+  getMonthlySummary: (year: number) =>
+    client.get<ApiResponse<{ year: number; rows: { month: string; totalRevenue: number; totalOrders: number; cashRevenue: number; averageOrderValue: number }[] }>>('/reports/monthly', { params: { year } }),
+
   getHourlySales: (date?: string) =>
     client.get<ApiResponse<HourlySales[]>>('/reports/hourly', { params: { date } }),
 

@@ -67,6 +67,9 @@ export const ordersApi = {
   void: (orderId: string, reason?: string) =>
     client.post<ApiResponse>(`/orders/${orderId}/void`, { reason }),
 
+  cancel: (orderId: string) =>
+    client.post<ApiResponse>(`/orders/${orderId}/cancel`),
+
   printReceipt: (orderId: string) =>
     client.get<ApiResponse<{ html: string }>>(`/print/receipt/${orderId}`),
 }

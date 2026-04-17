@@ -53,32 +53,51 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
   }, [])
 
   useEffect(() => {
+    if (!isOpen) return
     if (reservation) {
       reset({
         customerName: reservation.customerName,
         customerPhone: reservation.customerPhone,
         customerEmail: reservation.customerEmail || '',
         guestCount: reservation.guestCount,
-        tableId: reservation.tableId,
+        tableId: reservation.tableId || '',
         date: reservation.date,
         time: reservation.time,
-        endTime: reservation.endTime,
-        deposit: reservation.deposit,
+        endTime: reservation.endTime || '',
+        deposit: reservation.deposit ?? 0,
         note: reservation.note || '',
       })
     } else {
-      reset({ date: new Date().toISOString().split('T')[0], guestCount: 2 })
+      reset({
+        customerName: '',
+        customerPhone: '',
+        customerEmail: '',
+        guestCount: 2,
+        tableId: '',
+        date: new Date().toISOString().split('T')[0],
+        time: '',
+        endTime: '',
+        deposit: 0,
+        note: '',
+      })
     }
   }, [reservation, reset, isOpen])
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true)
+    // Boş optional string alanları undefined'a dönüştür — backend regex'ini geçemez
+    const payload = {
+      ...data,
+      endTime:       data.endTime       || undefined,
+      tableId:       data.tableId       || undefined,
+      customerEmail: data.customerEmail || undefined,
+    }
     try {
       if (isEdit && reservation) {
-        await reservationsApi.update(reservation.id, data)
+        await reservationsApi.update(reservation.id, payload)
         toast.success('Rezervasyon güncellendi')
       } else {
-        await reservationsApi.create(data)
+        await reservationsApi.create(payload)
         toast.success('Rezervasyon oluşturuldu')
       }
       onSuccess()

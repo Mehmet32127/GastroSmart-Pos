@@ -171,26 +171,42 @@ router.post('/:id/items', authenticate, async (req, res, next) => {
       }
     }
 
-    const totalPrice = parseFloat((menuItem.price * data.quantity).toFixed(2))
+    // Aynı ürün (netsiz, iptal edilmemiş) varsa miktar artır — yeni satır ekleme
+    const existing = order.items.find(
+      i => i.menu_item_id.toString() === data.menuItemId &&
+           !i.note &&
+           !data.note &&
+           i.status !== 'cancelled'
+    )
 
-    order.items.push({
-      menu_item_id:   menuItem._id,
-      menu_item_name: menuItem.name,
-      quantity:       data.quantity,
-      unit_price:     menuItem.price,
-      total_price:    totalPrice,
-      tax:            menuItem.tax ?? 8,
-      note:           data.note,
-      waiter_id:      req.user.id,
-      waiter_name:    req.user.fullName,
-    })
+    if (existing) {
+      existing.quantity   += data.quantity
+      existing.total_price = parseFloat((existing.quantity * existing.unit_price).toFixed(2))
+    } else {
+      const totalPrice = parseFloat((menuItem.price * data.quantity).toFixed(2))
+      order.items.push({
+        menu_item_id:   menuItem._id,
+        menu_item_name: menuItem.name,
+        quantity:       data.quantity,
+        unit_price:     menuItem.price,
+        total_price:    totalPrice,
+        tax:            menuItem.tax ?? 8,
+        note:           data.note,
+        waiter_id:      req.user.id,
+        waiter_name:    req.user.fullName,
+      })
+    }
 
     order.recalculate()
     await order.save()
 
     const populated = await Order.findById(order._id).populate(populateOpts).lean()
     const built = fmtOrder(populated)
-    const addedItem = built.items[built.items.length - 1]
+    // Güncellenen veya yeni eklenen kalemi döndür
+    const targetId = existing ? existing._id.toString() : null
+    const addedItem = targetId
+      ? built.items.find(i => i.id === targetId)
+      : built.items[built.items.length - 1]
 
     req.io?.emit('order:item:added', { tableId: order.table_id.toString(), order: built })
     req.io?.emit('table:updated', {
@@ -270,9 +286,67 @@ router.delete('/:id/items/:itemId', authenticate, async (req, res, next) => {
 
     item.deleteOne()
     order.recalculate()
+
+    // Aktif kalem kalmadıysa siparişi iptal et ve masayı boşalt
+    const remaining = order.items.filter(i => i.status !== 'cancelled')
+    if (remaining.length === 0) {
+      order.status    = 'cancelled'
+      order.closed_at = new Date()
+      await order.save()
+
+      await Table.findByIdAndUpdate(order.table_id, { status: 'available' })
+
+      req.io?.emit('order:updated', { id: order._id.toString(), status: 'cancelled' })
+      req.io?.emit('table:updated', {
+        id:               order.table_id.toString(),
+        status:           'available',
+        currentOrderId:   null,
+        activeOrderTotal: null,
+      })
+
+      return ok(res, null, 'Son ürün silindi, sipariş iptal edildi')
+    }
+
     await order.save()
 
+    req.io?.emit('table:updated', {
+      id:               order.table_id.toString(),
+      activeOrderTotal: order.total,
+    })
+
     return ok(res, null, 'Kalem silindi')
+  } catch (err) { next(err) }
+})
+
+// ── POST /api/orders/:id/cancel — Siparişi iptal et (masa boşalt) ────────────
+router.post('/:id/cancel', authenticate, async (req, res, next) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.id, status: 'open' })
+    if (!order) return fail(res, 'Açık sipariş bulunamadı', 404)
+
+    // Stokları iade et
+    for (const item of order.items.filter(i => i.status !== 'cancelled')) {
+      await MenuItem.updateOne(
+        { _id: item.menu_item_id, stock_quantity: { $ne: null } },
+        { $inc: { stock_quantity: item.quantity } }
+      )
+    }
+
+    order.status    = 'cancelled'
+    order.closed_at = new Date()
+    await order.save()
+
+    await Table.findByIdAndUpdate(order.table_id, { status: 'available' })
+
+    req.io?.emit('order:updated', { id: order._id.toString(), status: 'cancelled' })
+    req.io?.emit('table:updated', {
+      id:               order.table_id.toString(),
+      status:           'available',
+      currentOrderId:   null,
+      activeOrderTotal: null,
+    })
+
+    return ok(res, null, 'Sipariş iptal edildi, masa boşaltıldı')
   } catch (err) { next(err) }
 })
 

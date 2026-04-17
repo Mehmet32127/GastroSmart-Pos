@@ -61,10 +61,11 @@ async function seedTables() {
 }
 
 async function seedMenu() {
-  const count = await Category.countDocuments()
-  if (count > 0) { console.log(`  ℹ️  ${count} kategori zaten mevcut`); return }
+  const existingCats = await Category.find().lean()
+  const existingCatNames = new Set(existingCats.map(c => c.name))
+  const isFirstRun = existingCats.length === 0
 
-  const cats = await Category.create([
+  const catDefs = [
     { name: 'Çorbalar',            icon: '🥣', color: '#4ECDC4', sort_order: 1,  is_active: true },
     { name: 'Salatalar',           icon: '🥗', color: '#95E1D3', sort_order: 2,  is_active: true },
     { name: 'Mezeler',             icon: '🍽️', color: '#F38181', sort_order: 3,  is_active: true },
@@ -76,10 +77,22 @@ async function seedMenu() {
     { name: 'Sıcak İçecekler',     icon: '🍵', color: '#E8C49A', sort_order: 9,  is_active: true },
     { name: 'Soğuk İçecekler',     icon: '🥤', color: '#A0C4D4', sort_order: 10, is_active: true },
     { name: 'Alkollü İçecekler',   icon: '🍷', color: '#C084FC', sort_order: 11, is_active: true },
-  ])
+  ]
 
-  // Build name→id map
-  const c = Object.fromEntries(cats.map(cat => [cat.name, cat._id]))
+  // Eksik kategorileri ekle (mevcutlara dokunma)
+  const newCats = catDefs.filter(c => !existingCatNames.has(c.name))
+  if (newCats.length > 0) {
+    await Category.create(newCats)
+    console.log(`  ✅ ${newCats.length} yeni kategori eklendi`)
+  } else if (isFirstRun) {
+    console.log('  ℹ️  Hiç kategori yok')
+  } else {
+    console.log(`  ℹ️  ${existingCats.length} kategori zaten mevcut (yeni eklenen yok)`)
+  }
+
+  // Build name→id map (tüm kategorilerden)
+  const allCats = await Category.find().lean()
+  const c = Object.fromEntries(allCats.map(cat => [cat.name, cat._id]))
 
   const items = [
     // ── Çorbalar ──────────────────────────────────────────────────────────────
@@ -140,8 +153,17 @@ async function seedMenu() {
     { category_id: c['Alkollü İçecekler'], name: 'Beyaz Şarap',         price: 110, cost: 30, tax: 18, unit: 'kadeh', preparation_time: 2 },
   ]
 
-  await MenuItem.insertMany(items)
-  console.log(`  ✅ ${cats.length} kategori + ${items.length} ürün oluşturuldu`)
+  // Eksik ürünleri ekle (mevcut isimleri atla)
+  const existingItems = await MenuItem.find().select('name').lean()
+  const existingNames = new Set(existingItems.map(i => i.name))
+  const newItems = items.filter(i => !existingNames.has(i.name))
+
+  if (newItems.length > 0) {
+    await MenuItem.insertMany(newItems)
+    console.log(`  ✅ ${newItems.length} yeni ürün eklendi`)
+  } else {
+    console.log(`  ℹ️  Tüm ürünler zaten mevcut`)
+  }
 }
 
 async function seedSettings() {
@@ -171,6 +193,17 @@ async function seedSettings() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Başka bir modülden çağrılabilir: MongoDB bağlantısı zaten açık varsayılır.
+ */
+async function runSeed({ verbose = true } = {}) {
+  const log = verbose ? console.log : () => {}
+  log('👤 Kullanıcılar...');  await seedUsers()
+  log('🪑 Masalar...');       await seedTables()
+  log('🍽️  Menü...');          await seedMenu()
+  log('⚙️  Ayarlar...');       await seedSettings()
+}
+
 async function main() {
   console.log('\n🌱 GastroSmart POS — MongoDB Seed\n')
   console.log(`📡 Bağlanıyor: ${MONGO_URI.replace(/\/\/([^:]+:[^@]+)@/, '//***@')}\n`)
@@ -178,17 +211,7 @@ async function main() {
   await mongoose.connect(MONGO_URI)
   console.log('✅ MongoDB bağlandı\n')
 
-  console.log('👤 Kullanıcılar...')
-  await seedUsers()
-
-  console.log('🪑 Masalar...')
-  await seedTables()
-
-  console.log('🍽️  Menü...')
-  await seedMenu()
-
-  console.log('⚙️  Ayarlar...')
-  await seedSettings()
+  await runSeed()
 
   console.log('\n✅ Seed tamamlandı!')
   console.log('\n📝 Giriş bilgileri:')
@@ -198,9 +221,14 @@ async function main() {
   console.log('⚠️  Şifreleri değiştirmeyi unutmayın!\n')
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch(err => {
-    console.error('\n❌ Seed hatası:', err.message)
-    process.exit(1)
-  })
+// CLI olarak çağrılırsa tam seed akışı
+if (require.main === module) {
+  main()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error('\n❌ Seed hatası:', err.message)
+      process.exit(1)
+    })
+}
+
+module.exports = { runSeed }

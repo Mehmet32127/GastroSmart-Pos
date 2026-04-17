@@ -52,15 +52,14 @@ export const HistoryPage: React.FC = () => {
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
           <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Masa, garson, sipariş No..."
+            placeholder="Masa veya garson ara..."
             className="pl-8 pr-3 py-1.5 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] text-xs text-[var(--color-text)] placeholder-[var(--color-text-muted)]/50 focus:outline-none font-body w-52" />
         </div>
       </div>
 
       {/* Table header */}
       <div className="hidden md:grid grid-cols-12 gap-3 px-5 py-2 text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider font-body border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-        <div className="col-span-1">#</div>
-        <div className="col-span-2">Masa</div>
+        <div className="col-span-3">Masa</div>
         <div className="col-span-2">Garson</div>
         <div className="col-span-3">Tarih</div>
         <div className="col-span-1">Ödeme</div>
@@ -81,10 +80,7 @@ export const HistoryPage: React.FC = () => {
                   onClick={() => setExpanded(expanded === order.id ? null : order.id)}
                   className="w-full grid grid-cols-12 gap-3 px-5 py-3 text-left hover:bg-[var(--color-surface)] transition-colors items-center"
                 >
-                  <div className="col-span-1">
-                    <span className="text-xs font-mono text-[var(--color-text-muted)]">#{order.id}</span>
-                  </div>
-                  <div className="col-span-2">
+                  <div className="col-span-3">
                     <span className="text-sm font-semibold text-[var(--color-text)] font-body">{order.tableName}</span>
                   </div>
                   <div className="col-span-2 hidden md:block">

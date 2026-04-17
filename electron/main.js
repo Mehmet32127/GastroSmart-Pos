@@ -21,6 +21,21 @@ function loadOrCreateSecrets(secretsFile) {
   return secrets
 }
 
+// ── Tek instance zorla — ikinci açılışta mevcut pencereyi öne getir ───────────
+const gotSingleLock = app.requestSingleInstanceLock()
+if (!gotSingleLock) {
+  app.quit()
+  process.exit(0)
+}
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+  }
+})
+
 // ── Paths ─────────────────────────────────────────────────────────────────────
 const isDev     = !app.isPackaged
 const userDataDir = app.getPath('userData')
@@ -92,6 +107,34 @@ function createLoadingWindow() {
 }
 
 // ── Yazıcı IPC ────────────────────────────────────────────────────────────────
+// ── Tray ikonunu URL'den güncelle (Ayarlar → Logo yükle) ─────────────────────
+ipcMain.handle('tray:update-icon', async (_event, logoUrl) => {
+  if (!tray) return
+  try {
+    const https = logoUrl.startsWith('https') ? require('https') : require('http')
+    await new Promise((resolve, reject) => {
+      https.get(logoUrl, (res) => {
+        const chunks = []
+        res.on('data', d => chunks.push(d))
+        res.on('end', () => {
+          try {
+            const buf = Buffer.concat(chunks)
+            const img = nativeImage.createFromBuffer(buf)
+            if (!img.isEmpty()) {
+              const resized = img.resize({ width: 16, height: 16 })
+              tray.setImage(resized)
+            }
+            resolve()
+          } catch (e) { reject(e) }
+        })
+        res.on('error', reject)
+      }).on('error', reject)
+    })
+  } catch (e) {
+    log(`[tray] İkon güncellenemedi: ${e.message}`)
+  }
+})
+
 ipcMain.handle('printers:list', async () => {
   try {
     const printers = await mainWindow.webContents.getPrintersAsync()
@@ -271,6 +314,9 @@ function killProcesses() {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
+  // File/Edit/View/Window/Help menü çubuğunu kaldır
+  Menu.setApplicationMenu(null)
+
   ensureDirs()
   createTray()
 
@@ -300,7 +346,11 @@ app.on('window-all-closed', e => e.preventDefault()) // Tray'de kalır
 
 app.on('before-quit', () => {
   isQuitting = true
+  if (tray) { tray.destroy(); tray = null }
   killProcesses()
 })
 
-app.on('will-quit', () => killProcesses())
+app.on('will-quit', () => {
+  if (tray) { tray.destroy(); tray = null }
+  killProcesses()
+})

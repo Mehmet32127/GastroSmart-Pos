@@ -2,11 +2,9 @@ import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, Lock, User, Wifi, WifiOff, Mail, X } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Eye, EyeOff, Lock, User, Wifi, WifiOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useOfflineQueue } from '@/hooks/useOfflineQueue'
-import client from '@/api/client'
 
 const schema = z.object({
   username: z.string().min(1, 'Kullanıcı adı gerekli'),
@@ -20,31 +18,12 @@ export const LoginPage: React.FC = () => {
   const { isOnline } = useOfflineQueue()
   const [showPw, setShowPw]           = useState(false)
   const [focused, setFocused]         = useState<string | null>(null)
-  const [showForgot, setShowForgot]   = useState(false)
-  const [forgotEmail, setForgotEmail] = useState('')
-  const [forgotLoading, setForgotLoading] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
 
   const onSubmit = (data: FormData) => login(data)
-
-  const handleForgot = async () => {
-    if (!forgotEmail.trim()) return
-    setForgotLoading(true)
-    try {
-      const { data } = await client.post('/auth/forgot-password', { email: forgotEmail.trim() })
-      toast.success(data.message || 'E-posta gönderildi')
-      setShowForgot(false)
-      setForgotEmail('')
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      toast.error(msg || 'Bir hata oluştu')
-    } finally {
-      setForgotLoading(false)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4 relative overflow-hidden">
@@ -155,12 +134,11 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Forgot password link */}
+          {/* Şifre sıfırlama için admin'e başvurun */}
           <div className="mt-4 text-center">
-            <button onClick={() => setShowForgot(true)}
-              className="text-xs text-[var(--color-text-muted)]/60 hover:text-[var(--color-accent)] transition-colors font-body">
-              Şifremi / kullanıcı adımı unuttum
-            </button>
+            <p className="text-xs text-[var(--color-text-muted)]/60 font-body">
+              Şifrenizi unuttuysanız yöneticinize başvurun.
+            </p>
           </div>
         </div>
 
@@ -168,45 +146,6 @@ export const LoginPage: React.FC = () => {
           GastroSmart POS v1.0 · Yerel Ağ Modu
         </p>
       </div>
-
-      {/* Forgot Password Modal */}
-      {showForgot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 w-full max-w-sm shadow-card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-[var(--color-text)] font-display">Şifremi Unuttum</h2>
-              <button onClick={() => { setShowForgot(false); setForgotEmail('') }}
-                className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-
-            <p className="text-sm text-[var(--color-text-muted)] font-body mb-4">
-              Hesabınıza kayıtlı e-posta adresini girin. Kullanıcı adınız ve yeni şifreniz e-posta ile gönderilecek.
-            </p>
-
-            <div className="relative mb-4">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]">
-                <Mail size={16} />
-              </div>
-              <input
-                type="email"
-                value={forgotEmail}
-                onChange={e => setForgotEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleForgot()}
-                placeholder="ornek@mail.com"
-                className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl pl-10 pr-4 py-3 text-sm font-body text-[var(--color-text)] placeholder-[var(--color-text-muted)]/40 focus:outline-none focus:border-[var(--color-accent)]/50"
-              />
-            </div>
-
-            <button onClick={handleForgot} disabled={forgotLoading || !forgotEmail.trim()}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold font-body disabled:opacity-50 transition-all"
-              style={{ background: 'var(--color-accent)', color: 'var(--color-accent-text)' }}>
-              {forgotLoading ? 'Gönderiliyor...' : 'Şifre Sıfırla'}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

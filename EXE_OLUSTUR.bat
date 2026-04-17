@@ -56,7 +56,8 @@ if %errorlevel% neq 0 (
 popd
 
 echo  [4/5] Public klasore kopyalaniyor...
-if not exist "backend\public" mkdir "backend\public"
+if exist "backend\public" rmdir /s /q "backend\public"
+mkdir "backend\public"
 xcopy /s /e /y /q "frontend\dist\*" "backend\public\"
 
 echo  [5/5] EXE paketi olusturuluyor...
@@ -69,9 +70,19 @@ if %errorlevel% neq 0 (
 )
 
 if not exist "YUKLEYICILER" mkdir "YUKLEYICILER"
+set "EXE_FOUND="
 for %%f in ("dist-electron\GastroSmart POS Setup *.exe") do (
-    copy /Y "%%f" "YUKLEYICILER\GastroSmart-POS-Setup.exe" >nul
-    echo  Kopyalandi: %%~nxf
+    if exist "%%f" (
+        copy /Y "%%f" "YUKLEYICILER\GastroSmart-POS-Setup.exe" >nul
+        echo  Kopyalandi: %%~nxf
+        set "EXE_FOUND=1"
+    )
+)
+if not defined EXE_FOUND (
+    popd
+    echo  HATA: dist-electron klasoründe setup EXE bulunamadi!
+    pause
+    exit /b 1
 )
 popd
 

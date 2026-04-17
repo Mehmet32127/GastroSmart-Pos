@@ -38,15 +38,24 @@ const STATUS_CONFIG = {
   },
 }
 
+// Kart boyutuna göre yazı boyutları
+const SIZE_CONFIG = {
+  sm: { name: 'text-xs',   section: 'text-[9px]', badge: 'text-[9px]', info: 'text-[10px]', total: 'text-[10px]' },
+  md: { name: 'text-base', section: 'text-xs',    badge: 'text-xs',    info: 'text-xs',     total: 'text-sm'     },
+  lg: { name: 'text-xl',   section: 'text-sm',    badge: 'text-sm',    info: 'text-sm',     total: 'text-base'   },
+}
+
 interface TableCardProps {
   table: Table
   onClick: (table: Table) => void
   isSelected?: boolean
+  cardSize?: 'sm' | 'md' | 'lg'
 }
 
-export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected }) => {
+export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected, cardSize = 'md' }) => {
   const [pressed, setPressed] = useState(false)
-  const cfg = STATUS_CONFIG[table.status]
+  const cfg  = STATUS_CONFIG[table.status]
+  const sz   = SIZE_CONFIG[cardSize]
 
   const handleClick = () => {
     setPressed(true)
@@ -58,10 +67,11 @@ export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected
     <button
       onClick={handleClick}
       className={cn(
-        'relative flex flex-col p-3.5 rounded-2xl border text-left',
-        'transition-all duration-200 select-none overflow-hidden',
+        'relative flex flex-col rounded-2xl border text-left',
+        'w-full h-full transition-all duration-200 select-none overflow-hidden',
         'shadow-card hover:shadow-card-hover',
         'bg-[var(--color-surface)]',
+        cardSize === 'sm' ? 'p-2' : cardSize === 'lg' ? 'p-5' : 'p-3',
         cfg.border,
         cfg.glow,
         pressed && 'scale-95',
@@ -81,34 +91,37 @@ export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected
         </span>
       )}
 
-      <div className="relative z-10 flex flex-col h-full gap-2">
+      <div className="relative z-10 flex flex-col h-full gap-1.5">
         {/* Header row */}
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-base font-bold text-[var(--color-text)] font-display leading-tight">
+        <div className="flex items-start justify-between gap-1">
+          <div className="min-w-0">
+            <p className={cn('font-bold text-[var(--color-text)] font-display leading-tight truncate', sz.name)}>
               {table.name}
             </p>
-            {table.section && (
-              <p className="text-[10px] text-[var(--color-text-muted)] font-body uppercase tracking-wider">
+            {table.section && cardSize !== 'sm' && (
+              <p className={cn('text-[var(--color-text-muted)] font-body truncate', sz.section)}>
                 {table.section}
               </p>
             )}
           </div>
-          <div className={cn('flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold font-body', cfg.bg, cfg.text)}>
+          <div className={cn(
+            'flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold font-body flex-shrink-0',
+            sz.badge, cfg.bg, cfg.text
+          )}>
             <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', cfg.dot,
               table.status === 'available' && 'animate-pulse'
             )} />
-            {cfg.label}
+            {cardSize !== 'sm' && cfg.label}
           </div>
         </div>
 
         {/* Info row */}
-        <div className="flex items-center gap-3 text-[11px] text-[var(--color-text-muted)] font-body">
+        <div className={cn('flex items-center gap-2 text-[var(--color-text-muted)] font-body', sz.info)}>
           <span className="flex items-center gap-1">
-            <Users size={10} />
+            <Users size={cardSize === 'lg' ? 12 : 10} />
             {table.capacity}
           </span>
-          {table.openedAt && (
+          {table.openedAt && cardSize !== 'sm' && (
             <span className="flex items-center gap-1">
               <Clock size={10} />
               {formatRelative(table.openedAt)}
@@ -117,21 +130,21 @@ export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected
         </div>
 
         {/* Order total */}
-        {table.activeOrderTotal !== undefined && table.status === 'occupied' && (
+        {table.activeOrderTotal !== undefined && table.status === 'occupied' && cardSize !== 'sm' && (
           <div className="flex items-center justify-between pt-1 mt-auto border-t border-[var(--color-border)]/50">
-            <span className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] font-body">
+            <span className={cn('flex items-center gap-1 text-[var(--color-text-muted)] font-body', sz.info)}>
               <Receipt size={10} />
               Toplam
             </span>
-            <span className="text-sm font-bold font-mono text-[var(--color-text)]">
+            <span className={cn('font-bold font-mono text-[var(--color-text)]', sz.total)}>
               {formatCurrency(table.activeOrderTotal)}
             </span>
           </div>
         )}
 
         {/* Waiter */}
-        {table.waiterName && table.status === 'occupied' && (
-          <p className="text-[10px] text-[var(--color-text-muted)] font-body truncate">
+        {table.waiterName && table.status === 'occupied' && cardSize === 'lg' && (
+          <p className={cn('text-[var(--color-text-muted)] font-body truncate', sz.info)}>
             👤 {table.waiterName}
           </p>
         )}

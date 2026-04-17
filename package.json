@@ -30,7 +30,8 @@
     "files": [
       "electron/main.js",
       "electron/preload.js",
-      "electron/loading.html"
+      "electron/loading.html",
+      "electron/assets/**"
     ],
     "extraResources": [
       {
@@ -42,13 +43,18 @@
           "!logs/**",
           "!uploads/**",
           "!backups/**",
-          "!.env",
           "!data/**"
         ]
       },
       {
         "from": "electron/mongodb",
         "to": "mongodb"
+      }
+    ],
+    "extraFiles": [
+      {
+        "from": "electron/assets/Admin-Sifre-Sifirla.bat",
+        "to": "Admin-Sifre-Sifirla.bat"
       }
     ],
     "win": {
@@ -62,12 +68,13 @@
       ]
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
+      "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "GastroSmart POS",
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "include": "electron/installer.nsh"
     }
   }
 }

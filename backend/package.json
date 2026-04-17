@@ -6,7 +6,6 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "setup": "node scripts/setup.js",
     "seed": "node scripts/seed-mongodb.js",
     "certs": "node scripts/generate-certs.js"
   },
@@ -23,7 +22,6 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.2",
-    "nodemailer": "^8.0.5",
     "selfsigned": "^2.4.1",
     "socket.io": "^4.7.5",
     "uuid": "^10.0.0",

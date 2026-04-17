@@ -16,6 +16,7 @@ declare global {
       isElectron: boolean
       getPrinters: () => Promise<{ name: string; isDefault: boolean; status: number }[]>
       printReceipt: (html: string, printerName: string, paperWidth: string) => Promise<{ success: boolean; error: string | null }>
+      updateTrayIcon: (logoUrl: string) => Promise<void>
     }
   }
 }
