@@ -57,3 +57,14 @@ tmp/
 # Test
 coverage/
 .nyc_output/
+
+# Satış kısımları - GitHub'da tutulmaz (lokal'de kalır)
+electron/
+backend/
+dist-electron/
+*.bat
+ecosystem.config.js
+TEKNIK_RAPOR.md
+CLAUDE.md
+/package.json
+/package-lock.json
