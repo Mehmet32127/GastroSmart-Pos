@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Search, Bell, Wifi, WifiOff, TrendingUp, X, Check, CheckCheck } from 'lucide-react'
+import { Search, Bell, Wifi, WifiOff, TrendingUp, X, Check, CheckCheck, Menu } from 'lucide-react'
 import { cn, formatCurrency, formatRelative, getInitials } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
@@ -9,11 +9,13 @@ import type { ConnectionStatus } from '@/hooks/useSocket'
 interface TopBarProps {
   connectionStatus: ConnectionStatus
   queueCount?: number
+  onMenuClick?: () => void
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   connectionStatus,
   queueCount = 0,
+  onMenuClick,
 }) => {
   const { user } = useAuthStore()
   const { notifications, unreadCount, markRead, markAllRead } = useNotificationStore()
@@ -66,7 +68,18 @@ export const TopBar: React.FC<TopBarProps> = ({
   const { icon: statusIcon, color: statusColor, label: statusLabel } = statusConfig[connectionStatus]
 
   return (
-    <header className="h-16 flex items-center px-4 gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] relative z-20">
+    <header className="h-14 md:h-16 flex items-center px-2 md:px-4 gap-2 md:gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] relative z-20">
+      {/* Hamburger menu — sadece mobil */}
+      {onMenuClick && (
+        <button
+          onClick={onMenuClick}
+          aria-label="Menüyü aç"
+          className="md:hidden p-2 rounded-xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)] transition-colors flex-shrink-0"
+        >
+          <Menu size={20} />
+        </button>
+      )}
+
       {/* Connection status */}
       <div className={cn('flex items-center gap-1.5 text-xs font-body flex-shrink-0', statusColor)}>
         {statusIcon}
@@ -97,7 +110,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* Search */}
       <div className="relative">
         {searchOpen ? (
-          <div className="flex items-center gap-2 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-1.5 w-64 animate-slide-in">
+          <div className="flex items-center gap-2 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-1.5 w-[min(16rem,calc(100vw-6rem))] animate-slide-in">
             <Search size={14} className="text-[var(--color-text-muted)] flex-shrink-0" />
             <input
               ref={searchRef}
@@ -136,7 +149,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {/* Notification dropdown */}
         {notifOpen && (
-          <div className="absolute right-0 top-full mt-2 w-80 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-card-hover z-50 animate-slide-up">
+          <div className="absolute right-0 top-full mt-2 w-[calc(100vw-1rem)] max-w-[20rem] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-card-hover z-50 animate-slide-up">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
               <h3 className="text-sm font-semibold text-[var(--color-text)] font-display">
                 Bildirimler

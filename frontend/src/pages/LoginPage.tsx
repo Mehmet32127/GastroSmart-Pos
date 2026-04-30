@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -134,11 +135,14 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Şifre sıfırlama için admin'e başvurun */}
+          {/* Şifremi unuttum */}
           <div className="mt-4 text-center">
-            <p className="text-xs text-[var(--color-text-muted)]/60 font-body">
-              Şifrenizi unuttuysanız yöneticinize başvurun.
-            </p>
+            <Link
+              to="/forgot-password"
+              className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors font-body underline-offset-2 hover:underline"
+            >
+              Şifremi unuttum
+            </Link>
           </div>
         </div>
 

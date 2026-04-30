@@ -17,6 +17,14 @@ export interface UpdateUserPayload {
   phone?: string
 }
 
+export const authPasswordApi = {
+  forgotPassword: (email: string) =>
+    client.post<ApiResponse>('/auth/forgot-password', { email }),
+
+  resetPassword: (token: string, newPassword: string) =>
+    client.post<ApiResponse>('/auth/reset-password', { token, newPassword }),
+}
+
 export const usersApi = {
   getAll: () =>
     client.get<ApiResponse<User[]>>('/users'),

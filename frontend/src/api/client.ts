@@ -4,9 +4,42 @@ import { useAuthStore } from '@/store/authStore'
 
 const client = axios.create({
   baseURL: `${CONFIG.API_BASE}/api`,
-  timeout: 15000,
+  // Render free tier cold start ~30-60s sürebilir, ilk istekleri kesmeyelim
+  timeout: 60000,
   headers: { 'Content-Type': 'application/json' },
 })
+
+// ── Cold start retry ──────────────────────────────────────────────────────────
+// Network error (timeout / connection refused / 502/503/504) durumunda
+// exponential backoff ile 3 kere tekrar dener. Render servis uyuyorsa
+// bu süreçte uyanıyor.
+type RetryableConfig = InternalAxiosRequestConfig & { _retryCount?: number }
+
+const MAX_RETRIES   = 3
+const RETRY_BASE_MS = 2000
+
+async function shouldRetry(err: AxiosError): Promise<boolean> {
+  // 5xx veya network error
+  const status = err.response?.status
+  if (!err.response) return true                    // network/timeout
+  if (status && status >= 500 && status < 600) return true
+  return false
+}
+
+async function retryRequest(err: AxiosError) {
+  const cfg = err.config as RetryableConfig | undefined
+  if (!cfg) return Promise.reject(err)
+
+  cfg._retryCount = cfg._retryCount ?? 0
+  if (cfg._retryCount >= MAX_RETRIES) return Promise.reject(err)
+
+  if (!(await shouldRetry(err))) return Promise.reject(err)
+
+  cfg._retryCount += 1
+  const delay = RETRY_BASE_MS * Math.pow(2, cfg._retryCount - 1)
+  await new Promise((r) => setTimeout(r, delay))
+  return client(cfg)
+}
 
 // ── Token refresh queue ───────────────────────────────────────────────────────
 // Birden fazla istek aynı anda 401 alırsa, sadece bir refresh yapılır.
@@ -41,8 +74,13 @@ client.interceptors.response.use(
   async (err: AxiosError) => {
     const original = err.config as RetryConfig | undefined
 
+    // 5xx / network error → cold start retry
+    if (err.response?.status !== 401) {
+      return retryRequest(err)
+    }
+
     // 401 değilse veya zaten retry denendiyse direkt hata fırlat
-    if (err.response?.status !== 401 || !original || original._retry) {
+    if (!original || original._retry) {
       return Promise.reject(err)
     }
 

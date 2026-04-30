@@ -6,7 +6,9 @@ import { Toaster } from 'react-hot-toast'
 import { AppLayout } from '@/components/layout/AppLayout'
 
 // Pages
-import { LoginPage }        from '@/pages/LoginPage'
+import { LoginPage }            from '@/pages/LoginPage'
+import { ForgotPasswordPage }   from '@/pages/ForgotPasswordPage'
+import { ResetPasswordPage }    from '@/pages/ResetPasswordPage'
 import { TablesPage }       from '@/pages/TablesPage'
 import { OrdersPage }       from '@/pages/OrdersPage'
 import { ReservationsPage } from '@/pages/ReservationsPage'
@@ -38,8 +40,27 @@ export const App: React.FC = () => {
     applyTheme()
   }, [applyTheme])
 
+  // Backend wake-up ping — Render free tier 15 dk inaktif kalınca uyur,
+  // ilk istekte 30-60 sn'de uyanır. Uygulama açılır açılmaz arka planda
+  // /api/health ping'i atarak uyanmasını başlatıyoruz; kullanıcı login
+  // tuşuna bastığında sunucu hazır oluyor.
+  useEffect(() => {
+    const pingBackend = async () => {
+      try {
+        await fetch(`${CONFIG.API_BASE}/api/health`, {
+          method: 'GET',
+          // No-cors ile sessiz ping — CORS preflight'a takılmasın
+          mode: 'cors',
+        })
+      } catch {
+        // Sessiz - retry interceptor zaten ileride halleder
+      }
+    }
+    pingBackend()
+  }, [])
+
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       {/* Toast notifications */}
       <Toaster
         position="bottom-right"
@@ -70,6 +91,8 @@ export const App: React.FC = () => {
       <Routes>
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
         {/* Protected — wrapped in AppLayout */}
         <Route element={<AppLayout />}>
