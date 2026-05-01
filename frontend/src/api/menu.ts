@@ -29,6 +29,9 @@ export const menuApi = {
   deleteItem: (id: string) =>
     client.delete<ApiResponse>(`/menu/items/${id}`),
 
+  restoreItem: (id: string) =>
+    client.post<ApiResponse<MenuItem>>(`/menu/items/${id}/restore`),
+
   updateStock: (id: string, quantity: number, operation: 'set' | 'add' | 'subtract') =>
     client.patch<ApiResponse<MenuItem>>(`/menu/items/${id}/stock`, { quantity, operation }),
 }

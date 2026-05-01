@@ -88,25 +88,26 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     if (!currentOrder) return { subtotal: 0, taxTotal: 0, total: 0 }
 
     const activeItems = currentOrder.items.filter((i) => i.status !== 'cancelled')
+    const round = (n: number) => parseFloat(n.toFixed(2))
 
-    const subtotal = activeItems.reduce((acc, item) => acc + item.totalPrice, 0)
+    const subtotal = round(activeItems.reduce((acc, item) => acc + item.totalPrice, 0))
 
-    const taxTotal = activeItems.reduce(
+    const taxTotal = round(activeItems.reduce(
       (acc, item) => acc + (item.totalPrice * item.tax) / (100 + item.tax),
       0
-    )
+    ))
 
-    const discount =
-      currentOrder.discountType === 'percent'
-        ? subtotal * (currentOrder.discount / 100)
-        : currentOrder.discount
-
-    const total = Math.max(0, subtotal - discount)
-
-    return {
-      subtotal: parseFloat(subtotal.toFixed(2)),
-      taxTotal: parseFloat(taxTotal.toFixed(2)),
-      total:    parseFloat(total.toFixed(2)),
+    // Backend ile aynı clamp mantığı: percent 0-100, amount 0-subtotal
+    let discount: number
+    if (currentOrder.discountType === 'percent') {
+      const pct = Math.min(100, Math.max(0, currentOrder.discount || 0))
+      discount = subtotal * (pct / 100)
+    } else {
+      discount = Math.min(subtotal, Math.max(0, currentOrder.discount || 0))
     }
+
+    const total = Math.max(0, round(subtotal - discount))
+
+    return { subtotal, taxTotal, total }
   },
 }))

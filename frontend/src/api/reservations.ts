@@ -48,4 +48,7 @@ export const reservationsApi = {
 
   delete: (id: string) =>
     client.delete<ApiResponse>(`/reservations/${id}`),
+
+  restore: (id: string) =>
+    client.post<ApiResponse<Reservation>>(`/reservations/${id}/restore`),
 }
