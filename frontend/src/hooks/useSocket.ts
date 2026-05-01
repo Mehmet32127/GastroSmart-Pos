@@ -17,10 +17,17 @@ export function useSocket() {
   const { addNotification } = useNotificationStore()
   const { setTheme } = useThemeStore()
 
+  // Render cold start için sabırlı ol — birkaç başarısız denemeden sonra "Hata" göster
+  const hasConnectedOnceRef = useRef(false)
+  const errorCountRef = useRef(0)
+  const ERROR_THRESHOLD = 5  // 5 başarısız denemeden sonra "Hata" göster
+
   useEffect(() => {
     if (!isAuthenticated || !accessToken) return
 
     setStatus('connecting')
+    hasConnectedOnceRef.current = false
+    errorCountRef.current = 0
 
     const socket = io(CONFIG.SOCKET_BASE, {
       auth:                { token: accessToken },
@@ -38,22 +45,32 @@ export function useSocket() {
     socketRef.current = socket
 
     socket.on('connect', () => {
+      hasConnectedOnceRef.current = true
+      errorCountRef.current = 0
       setStatus('connected')
     })
 
     socket.on('disconnect', (reason) => {
-      setStatus('disconnected')
-      // Sunucu tarafından koparıldıysa yeniden bağlan
+      // Bir kere bağlandıysak bilinçli kopukluk göster, yoksa "connecting" kal
+      setStatus(hasConnectedOnceRef.current ? 'disconnected' : 'connecting')
       if (reason === 'io server disconnect') {
         setTimeout(() => socket.connect(), 2000)
       }
     })
 
     socket.on('connect_error', () => {
-      setStatus('error')
+      errorCountRef.current += 1
+      // Cold start aşamasında sabırlı ol — eşik geçilene kadar "connecting" göster
+      if (hasConnectedOnceRef.current || errorCountRef.current >= ERROR_THRESHOLD) {
+        setStatus('error')
+      } else {
+        setStatus('connecting')
+      }
     })
 
     socket.on('reconnect', () => {
+      hasConnectedOnceRef.current = true
+      errorCountRef.current = 0
       setStatus('connected')
     })
 

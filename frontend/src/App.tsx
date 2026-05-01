@@ -40,23 +40,40 @@ export const App: React.FC = () => {
     applyTheme()
   }, [applyTheme])
 
-  // Backend wake-up ping — Render free tier 15 dk inaktif kalınca uyur,
-  // ilk istekte 30-60 sn'de uyanır. Uygulama açılır açılmaz arka planda
-  // /api/health ping'i atarak uyanmasını başlatıyoruz; kullanıcı login
-  // tuşuna bastığında sunucu hazır oluyor.
+  // Backend wake-up — Render free tier 15 dk inaktif kalınca uyur, ilk istekte
+  // 30-60 sn'de uyanır. App boot'tan socket bağlantısına kadar arka planda
+  // ping atarak uyanmasını sağlıyoruz. Uyanana kadar 5 sn aralıkla denenir
+  // (en fazla 24 deneme = 2 dakika).
   useEffect(() => {
-    const pingBackend = async () => {
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout>
+    let attempts = 0
+    const MAX_ATTEMPTS = 24
+
+    const ping = async () => {
+      if (cancelled || attempts >= MAX_ATTEMPTS) return
+      attempts += 1
       try {
-        await fetch(`${CONFIG.API_BASE}/api/health`, {
+        const res = await fetch(`${CONFIG.API_BASE}/api/health`, {
           method: 'GET',
-          // No-cors ile sessiz ping — CORS preflight'a takılmasın
-          mode: 'cors',
+          mode:   'cors',
+          cache:  'no-store',
         })
+        if (res.ok) return  // Uyandı, devam etme
       } catch {
-        // Sessiz - retry interceptor zaten ileride halleder
+        // Bağlantı yok — Render hâlâ uyanıyor
+      }
+      if (!cancelled && attempts < MAX_ATTEMPTS) {
+        timer = setTimeout(ping, 5000)
       }
     }
-    pingBackend()
+
+    ping()
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
   }, [])
 
   return (
