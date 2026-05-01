@@ -21,7 +21,8 @@ const ROLE_CONFIG: Record<UserRole, { label: string; badge: 'default' | 'success
 const userSchema = z.object({
   username: z.string().min(3, 'En az 3 karakter'),
   fullName: z.string().min(2, 'Ad Soyad gerekli'),
-  email: z.string().email('Geçersiz e-posta').optional().or(z.literal('')),
+  // Email artık zorunlu — şifre sıfırlama için gerekli
+  email: z.string().min(1, 'Email zorunlu').email('Geçersiz e-posta'),
   phone: z.string().optional(),
   role: z.enum(['admin', 'manager', 'waiter']),
   password: z.string().min(8, 'En az 8 karakter').optional().or(z.literal('')),
@@ -77,7 +78,10 @@ export const UsersPage: React.FC = () => {
       }
       setModalOpen(false)
       load()
-    } catch { toast.error('İşlem başarısız') }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || 'İşlem başarısız')
+    }
   }
 
   const handleDelete = async () => {
@@ -87,7 +91,10 @@ export const UsersPage: React.FC = () => {
       toast.success('Kullanıcı silindi')
       setDeleteId(null)
       load()
-    } catch { toast.error('Silinemedi') }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || 'Silinemedi')
+    }
   }
 
   const handleToggle = async (id: string) => {
@@ -207,7 +214,13 @@ export const UsersPage: React.FC = () => {
             <Input label="Kullanıcı Adı *" error={errors.username?.message} {...register('username')} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="E-posta" type="email" {...register('email')} />
+            <Input
+              label="E-posta *"
+              type="email"
+              error={errors.email?.message}
+              hint="Şifre sıfırlama için kullanılacak"
+              {...register('email')}
+            />
             <Input label="Telefon" {...register('phone')} />
           </div>
           <Select label="Rol *" options={roleOptions} {...register('role')} />

@@ -19,7 +19,6 @@ const itemSchema = z.object({
   cost: z.coerce.number().min(0).optional(),
   tax: z.coerce.number().min(0).max(100).default(8),
   stock: z.coerce.number().min(0).optional(),
-  minStock: z.coerce.number().min(0).optional(),
   unit: z.string().default('adet'),
   description: z.string().optional(),
   active: z.boolean().default(true),
@@ -65,7 +64,7 @@ export const MenuPage: React.FC = () => {
     if (item) {
       reset({
         name: item.name, categoryId: item.categoryId, price: item.price,
-        cost: item.cost, tax: item.tax, stock: item.stock, minStock: item.minStock,
+        cost: item.cost, tax: item.tax, stock: item.stock,
         unit: item.unit, description: item.description, active: item.active,
       })
     } else {
@@ -138,7 +137,9 @@ export const MenuPage: React.FC = () => {
     return matchCat && matchSearch
   })
 
-  const lowStock = items.filter(i => i.stock !== undefined && i.stock <= (i.minStock || 3))
+  // Düşük stok eşiği: 5 adet — sabit ve sade
+  const LOW_STOCK_THRESHOLD = 5
+  const lowStock = items.filter(i => i.stock !== undefined && i.stock !== null && i.stock <= LOW_STOCK_THRESHOLD)
   const catOptions = [{ value: '', label: 'Kategori seçin' }, ...categories.map(c => ({ value: c.id, label: c.name }))]
 
   return (
@@ -246,18 +247,18 @@ export const MenuPage: React.FC = () => {
                     <span className="text-xs text-[var(--color-text-muted)] font-body">KDV %{item.tax}</span>
                   </div>
 
-                  {item.stock !== undefined && (
+                  {item.stock !== undefined && item.stock !== null && (
                     <button onClick={() => setStockModalItem(item)}
                       className={cn('w-full flex items-center justify-between px-2 py-1.5 rounded-lg mb-2 text-xs font-body transition-colors',
                         item.stock <= 0 ? 'bg-red-500/10 text-red-400' :
-                        item.stock <= (item.minStock || 3) ? 'bg-amber-500/10 text-amber-400' :
+                        item.stock <= LOW_STOCK_THRESHOLD ? 'bg-amber-500/10 text-amber-400' :
                         'bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
                       )}>
                       <span className="flex items-center gap-1">
                         <Package size={10} />
                         Stok: {item.stock} {item.unit}
                       </span>
-                      {item.stock <= (item.minStock || 3) && item.stock > 0 && (
+                      {item.stock <= LOW_STOCK_THRESHOLD && item.stock > 0 && (
                         <AlertTriangle size={10} />
                       )}
                     </button>
@@ -297,9 +298,8 @@ export const MenuPage: React.FC = () => {
             <Input label="Maliyet ₺" type="number" step="0.01" {...register('cost')} />
             <Input label="KDV %" type="number" {...register('tax')} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <Input label="Stok" type="number" {...register('stock')} />
-            <Input label="Min Stok" type="number" {...register('minStock')} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Stok" type="number" {...register('stock')} hint="Boş = sınırsız" />
             <Input label="Birim" placeholder="adet" {...register('unit')} />
           </div>
           <Textarea label="Açıklama" {...register('description')} />
