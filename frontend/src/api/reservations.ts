@@ -2,9 +2,6 @@ import client from './client'
 import type { Reservation, ReservationStatus, ApiResponse } from '@/types'
 
 export interface CreateReservationPayload {
-  customerName: string
-  customerPhone: string
-  customerEmail?: string
   guestCount: number
   date: string
   time: string
@@ -15,9 +12,6 @@ export interface CreateReservationPayload {
 }
 
 export interface UpdateReservationPayload {
-  customerName?: string
-  customerPhone?: string
-  customerEmail?: string
   guestCount?: number
   date?: string
   time?: string

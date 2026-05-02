@@ -12,16 +12,13 @@ import { useState } from 'react'
 import toast from 'react-hot-toast'
 
 const schema = z.object({
-  customerName: z.string().min(2, 'En az 2 karakter'),
-  customerPhone: z.string().min(10, 'Geçerli telefon').max(15),
-  customerEmail: z.string().email('Geçersiz e-posta').optional().or(z.literal('')),
   guestCount: z.coerce.number().min(1).max(50),
   tableId: z.string().optional(),
   date: z.string().min(1, 'Tarih gerekli'),
   time: z.string().min(1, 'Saat gerekli'),
   endTime: z.string().optional(),
   deposit: z.coerce.number().min(0).optional(),
-  note: z.string().optional(),
+  note: z.string().max(200, 'En fazla 200 karakter').optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -56,9 +53,6 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     if (!isOpen) return
     if (reservation) {
       reset({
-        customerName: reservation.customerName,
-        customerPhone: reservation.customerPhone,
-        customerEmail: reservation.customerEmail || '',
         guestCount: reservation.guestCount,
         tableId: reservation.tableId || '',
         date: reservation.date,
@@ -69,9 +63,6 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       })
     } else {
       reset({
-        customerName: '',
-        customerPhone: '',
-        customerEmail: '',
         guestCount: 2,
         tableId: '',
         date: new Date().toISOString().split('T')[0],
@@ -88,9 +79,8 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     // Boş optional string alanları undefined'a dönüştür — backend regex'ini geçemez
     const payload = {
       ...data,
-      endTime:       data.endTime       || undefined,
-      tableId:       data.tableId       || undefined,
-      customerEmail: data.customerEmail || undefined,
+      endTime: data.endTime || undefined,
+      tableId: data.tableId || undefined,
     }
     try {
       if (isEdit && reservation) {
@@ -130,29 +120,6 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       }
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Müşteri Adı *"
-            placeholder="Ad Soyad"
-            error={errors.customerName?.message}
-            {...register('customerName')}
-          />
-          <Input
-            label="Telefon *"
-            placeholder="0500 000 00 00"
-            error={errors.customerPhone?.message}
-            {...register('customerPhone')}
-          />
-        </div>
-
-        <Input
-          label="E-posta"
-          type="email"
-          placeholder="ornek@mail.com"
-          error={errors.customerEmail?.message}
-          {...register('customerEmail')}
-        />
-
         <div className="grid grid-cols-3 gap-3">
           <Input
             label="Kişi Sayısı *"
@@ -198,8 +165,8 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
         />
 
         <Textarea
-          label="Not"
-          placeholder="Özel istek, allerji vb."
+          label="Not (kısa, kişisel veri yazmayın)"
+          placeholder="ör. pencere kenarı, doğum günü"
           {...register('note')}
         />
       </form>

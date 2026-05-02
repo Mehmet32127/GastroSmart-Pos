@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Save, Building2, Phone, FileText, Globe, Receipt, Printer } from 'lucide-react'
+import { Save, Building2, Phone, FileText, Globe, Receipt, Printer, Download } from 'lucide-react'
 import { Card } from '@/components/ui/common'
 import { Button } from '@/components/ui/Button'
 import { settingsApi } from '@/api/settings'
 import { setActiveCurrency } from '@/utils/format'
+import { useAuthStore } from '@/store/authStore'
+import client from '@/api/client'
 import toast from 'react-hot-toast'
 
 interface SettingsData {
@@ -36,6 +38,29 @@ export const SettingsPage: React.FC = () => {
   const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>(() =>
     (localStorage.getItem('gastro_paper_width') as '58mm' | '80mm') ?? '80mm'
   )
+  const [downloading, setDownloading] = useState(false)
+  const isAdmin = useAuthStore((s) => s.hasRole(['admin']))
+
+  const handleDownloadBackup = async () => {
+    setDownloading(true)
+    try {
+      const res = await client.get('/settings/backup', { responseType: 'blob' })
+      const blob = new Blob([res.data], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `gastrosmart-yedek-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Yedek indirildi')
+    } catch {
+      toast.error('Yedek indirilemedi')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   useEffect(() => {
     settingsApi.get()
@@ -240,6 +265,29 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
       </Card>
+
+      {/* Yedekleme — sadece admin */}
+      {isAdmin && (
+        <Card>
+          <h2 className="text-sm font-semibold font-display text-[var(--color-text)] mb-4 flex items-center gap-2">
+            <Download size={16} className="text-[var(--color-accent)]" /> Yedekleme
+          </h2>
+          <div className="space-y-3">
+            <p className="text-xs text-[var(--color-text-muted)] font-body">
+              Tüm restoran verilerini (menü, masalar, siparişler, ayarlar) tek bir JSON dosyası olarak indirin.
+              Şifreler dahil edilmez. Önemli değişikliklerden önce yedek almanız önerilir.
+            </p>
+            <Button
+              variant="secondary"
+              icon={<Download size={14} />}
+              loading={downloading}
+              onClick={handleDownloadBackup}
+            >
+              Yedeği İndir
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Save button (bottom) */}
       <div className="flex justify-end pb-4">

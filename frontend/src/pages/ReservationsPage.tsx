@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Plus, ChevronLeft, ChevronRight, Phone, Users, DollarSign, Trash2, Edit2 } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Users, DollarSign, Trash2, Edit2 } from 'lucide-react'
 import { ReservationModal } from '@/components/reservations/ReservationModal'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -232,7 +232,9 @@ export const ReservationsPage: React.FC = () => {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-[var(--color-text)] font-body">{res.customerName}</p>
+                        <p className="font-semibold text-[var(--color-text)] font-body">
+                          {res.tableName ? `📍 ${res.tableName}` : 'Genel rezervasyon'}
+                        </p>
                         <Badge variant={STATUS_MAP[res.status].variant} dot>
                           {STATUS_MAP[res.status].label}
                         </Badge>
@@ -240,12 +242,8 @@ export const ReservationsPage: React.FC = () => {
 
                       <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] font-body flex-wrap">
                         <span className="flex items-center gap-1">
-                          <Phone size={10} /> {res.customerPhone}
-                        </span>
-                        <span className="flex items-center gap-1">
                           <Users size={10} /> {res.guestCount} kişi
                         </span>
-                        {res.tableName && <span>📍 {res.tableName}</span>}
                         {!!res.deposit && (
                           <span className="flex items-center gap-1 text-amber-400">
                             <DollarSign size={10} />

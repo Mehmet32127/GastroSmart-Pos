@@ -122,13 +122,11 @@ export interface Reservation {
   id: string
   tableId?: string
   tableName?: string
-  customerName: string
-  customerPhone: string
-  customerEmail?: string
   guestCount: number
   date: string
   time: string
   endTime?: string
+  durationMin?: number
   status: ReservationStatus
   deposit?: number
   depositPaid: boolean
