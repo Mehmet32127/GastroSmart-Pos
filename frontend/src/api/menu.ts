@@ -34,4 +34,10 @@ export const menuApi = {
 
   updateStock: (id: string, quantity: number, operation: 'set' | 'add' | 'subtract') =>
     client.patch<ApiResponse<MenuItem>>(`/menu/items/${id}/stock`, { quantity, operation }),
+
+  bulkUpdateStock: (updates: Array<{ id: string; quantity: number | null }>) =>
+    client.patch<ApiResponse<{ requested: number; matched: number; modified: number }>>(
+      '/menu/items/stock/bulk',
+      { updates },
+    ),
 }

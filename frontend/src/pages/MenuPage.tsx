@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Plus, Edit2, Trash2, Search, AlertTriangle, Package } from 'lucide-react'
+import { Plus, Edit2, Trash2, Search, AlertTriangle, Package, ClipboardList } from 'lucide-react'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { MenuItem, Category } from '@/types'
 import toast from 'react-hot-toast'
+import { useAuthStore } from '@/store/authStore'
 
 const itemSchema = z.object({
   name: z.string().min(1, 'Ürün adı gerekli'),
@@ -41,6 +42,10 @@ export const MenuPage: React.FC = () => {
   const [deleteCatId, setDeleteCatId] = useState<string | null>(null)
   const [stockModalItem, setStockModalItem] = useState<MenuItem | null>(null)
   const [stockAdjust, setStockAdjust] = useState('')
+  const [stockCountOpen, setStockCountOpen] = useState(false)
+  const [bulkStockMap, setBulkStockMap] = useState<Record<string, string>>({})
+  const [bulkSaving, setBulkSaving] = useState(false)
+  const canManageStock = useAuthStore((s) => s.hasRole(['admin', 'manager']))
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ItemForm>({
     resolver: zodResolver(itemSchema),
@@ -131,6 +136,50 @@ export const MenuPage: React.FC = () => {
     } catch { toast.error('Stok güncellenemedi') }
   }
 
+  const openStockCount = () => {
+    // Mevcut stoğu input'lara doldur (boş bırakılırsa "değişmesin" anlamına gelir)
+    const seed: Record<string, string> = {}
+    items.forEach((it) => {
+      seed[it.id] = it.stock !== undefined && it.stock !== null ? String(it.stock) : ''
+    })
+    setBulkStockMap(seed)
+    setStockCountOpen(true)
+  }
+
+  const handleBulkStockSave = async () => {
+    // Yalnızca değişen değerleri gönder. Boş input → null (sınırsız)
+    const updates = items
+      .map((it) => {
+        const raw = bulkStockMap[it.id]
+        if (raw === undefined) return null
+        const trimmed = raw.trim()
+        const newVal: number | null = trimmed === '' ? null : Math.max(0, parseFloat(trimmed) || 0)
+        const oldVal = it.stock ?? null
+        if (newVal === oldVal) return null
+        return { id: it.id, quantity: newVal }
+      })
+      .filter((u): u is { id: string; quantity: number | null } => u !== null)
+
+    if (updates.length === 0) {
+      toast('Değişiklik yok', { icon: 'ℹ️' })
+      return
+    }
+
+    setBulkSaving(true)
+    try {
+      const res = await menuApi.bulkUpdateStock(updates)
+      const modified = res.data.data?.modified ?? updates.length
+      toast.success(`${modified} ürünün stoğu güncellendi`)
+      setStockCountOpen(false)
+      setBulkStockMap({})
+      load()
+    } catch {
+      toast.error('Toplu stok güncellenemedi')
+    } finally {
+      setBulkSaving(false)
+    }
+  }
+
   const filtered = items.filter((item) => {
     const matchCat = selectedCategory === 'all' || item.categoryId === selectedCategory
     const matchSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -217,7 +266,19 @@ export const MenuPage: React.FC = () => {
               placeholder="Ürün ara..."
               className="w-full pl-8 pr-3 py-1.5 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text)] placeholder-[var(--color-text-muted)]/50 focus:outline-none focus:border-[var(--color-accent)]/40 font-body" />
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {canManageStock && (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<ClipboardList size={14} />}
+                onClick={openStockCount}
+                disabled={items.length === 0}
+                title="Tüm ürünlerin stoğunu tek ekrandan güncelle"
+              >
+                Stok Sayım
+              </Button>
+            )}
             <Button size="sm" icon={<Plus size={14} />} onClick={() => openItemModal()}>Ürün Ekle</Button>
           </div>
         </div>
@@ -247,21 +308,34 @@ export const MenuPage: React.FC = () => {
                     <span className="text-xs text-[var(--color-text-muted)] font-body">KDV %{item.tax}</span>
                   </div>
 
-                  {item.stock !== undefined && item.stock !== null && (
-                    <button onClick={() => setStockModalItem(item)}
-                      className={cn('w-full flex items-center justify-between px-2 py-1.5 rounded-lg mb-2 text-xs font-body transition-colors',
-                        item.stock <= 0 ? 'bg-red-500/10 text-red-400' :
-                        item.stock <= LOW_STOCK_THRESHOLD ? 'bg-amber-500/10 text-amber-400' :
-                        'bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-                      )}>
-                      <span className="flex items-center gap-1">
-                        <Package size={10} />
-                        Stok: {item.stock} {item.unit}
-                      </span>
-                      {item.stock <= LOW_STOCK_THRESHOLD && item.stock > 0 && (
-                        <AlertTriangle size={10} />
-                      )}
-                    </button>
+                  {canManageStock && (
+                    (() => {
+                      const hasStock = item.stock !== undefined && item.stock !== null
+                      return (
+                        <button
+                          onClick={() => { setStockModalItem(item); setStockAdjust(hasStock ? String(item.stock) : '') }}
+                          className={cn(
+                            'w-full flex items-center justify-between px-2 py-1.5 rounded-lg mb-2 text-xs font-body transition-colors',
+                            !hasStock
+                              ? 'bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] border border-dashed border-[var(--color-border)]'
+                              : item.stock! <= 0
+                              ? 'bg-red-500/10 text-red-400'
+                              : item.stock! <= LOW_STOCK_THRESHOLD
+                              ? 'bg-amber-500/10 text-amber-400'
+                              : 'bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
+                          )}
+                          title={hasStock ? 'Stoğu güncelle' : 'Stok belirle'}
+                        >
+                          <span className="flex items-center gap-1">
+                            <Package size={10} />
+                            {hasStock ? `Stok: ${item.stock} ${item.unit}` : 'Stok Belirle'}
+                          </span>
+                          {hasStock && item.stock! <= LOW_STOCK_THRESHOLD && item.stock! > 0 && (
+                            <AlertTriangle size={10} />
+                          )}
+                        </button>
+                      )
+                    })()
                   )}
 
                   <div className="flex gap-1">
@@ -328,6 +402,83 @@ export const MenuPage: React.FC = () => {
               onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' && stockAdjust) handleStockUpdate('set') }} />
           </div>
         )}
+      </Modal>
+
+      {/* Stok Sayım Modal — toplu güncelleme */}
+      <Modal
+        isOpen={stockCountOpen}
+        onClose={() => { if (!bulkSaving) { setStockCountOpen(false); setBulkStockMap({}) } }}
+        title="Stok Sayım"
+        size="lg"
+        footer={<>
+          <Button variant="secondary" onClick={() => { setStockCountOpen(false); setBulkStockMap({}) }} disabled={bulkSaving}>
+            İptal
+          </Button>
+          <Button onClick={handleBulkStockSave} disabled={bulkSaving}>
+            {bulkSaving ? 'Kaydediliyor…' : 'Tümünü Kaydet'}
+          </Button>
+        </>}
+      >
+        <div className="space-y-2">
+          <p className="text-xs text-[var(--color-text-muted)] font-body">
+            Yeni stoğu yaz; boş bırakırsan değişmez. Tamamen silmek için <strong>0</strong> gir, sınırsız yapmak için kelime "<strong>boş</strong>" yerine input'u temizle.
+          </p>
+          <div className="max-h-[60vh] overflow-y-auto pr-1 space-y-1">
+            {categories.map((cat) => {
+              const catItems = items.filter((i) => i.categoryId === cat.id)
+              if (catItems.length === 0) return null
+              return (
+                <div key={cat.id} className="mb-3">
+                  <p className="text-xs font-semibold text-[var(--color-accent)] font-body mb-1.5 sticky top-0 bg-[var(--color-surface)] py-1">
+                    {cat.icon} {cat.name} <span className="text-[var(--color-text-muted)] opacity-60">({catItems.length})</span>
+                  </p>
+                  {catItems.map((it) => (
+                    <div key={it.id} className="flex items-center gap-2 py-1 px-1 rounded-lg hover:bg-[var(--color-surface2)]/50">
+                      <span className="flex-1 text-xs text-[var(--color-text)] font-body truncate" title={it.name}>{it.name}</span>
+                      <span className="text-[10px] text-[var(--color-text-muted)] font-body w-16 text-right">
+                        Mevcut: <strong>{it.stock ?? '∞'}</strong>
+                      </span>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        inputMode="decimal"
+                        placeholder="—"
+                        value={bulkStockMap[it.id] ?? ''}
+                        onChange={(e) => setBulkStockMap((m) => ({ ...m, [it.id]: e.target.value }))}
+                        className="w-20 px-2 py-1 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-lg text-xs text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/40 font-mono"
+                      />
+                      <span className="text-[10px] text-[var(--color-text-muted)] font-body w-10">{it.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
+            {/* Kategorisi olmayan ürünler */}
+            {(() => {
+              const orphans = items.filter((i) => !categories.find((c) => c.id === i.categoryId))
+              if (orphans.length === 0) return null
+              return (
+                <div className="mb-3">
+                  <p className="text-xs font-semibold text-[var(--color-text-muted)] font-body mb-1.5">Kategorisiz</p>
+                  {orphans.map((it) => (
+                    <div key={it.id} className="flex items-center gap-2 py-1 px-1">
+                      <span className="flex-1 text-xs text-[var(--color-text)] font-body truncate">{it.name}</span>
+                      <span className="text-[10px] text-[var(--color-text-muted)] w-16 text-right">Mevcut: <strong>{it.stock ?? '∞'}</strong></span>
+                      <input
+                        type="number" step="0.1" min="0" placeholder="—"
+                        value={bulkStockMap[it.id] ?? ''}
+                        onChange={(e) => setBulkStockMap((m) => ({ ...m, [it.id]: e.target.value }))}
+                        className="w-20 px-2 py-1 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-lg text-xs font-mono"
+                      />
+                      <span className="text-[10px] text-[var(--color-text-muted)] w-10">{it.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
+        </div>
       </Modal>
 
       <ConfirmDialog isOpen={!!deleteItemId} onConfirm={handleDeleteItem}
