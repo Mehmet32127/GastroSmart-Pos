@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Plus, ChevronLeft, ChevronRight, Users, DollarSign, Trash2, Edit2 } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Users, DollarSign, Trash2, Edit2, Search, X } from 'lucide-react'
 import { ReservationModal } from '@/components/reservations/ReservationModal'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -29,6 +29,9 @@ export const ReservationsPage: React.FC = () => {
   const [editReservation, setEditReservation] = useState<Reservation | undefined>()
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'all'>('all')
+  const [codeQuery, setCodeQuery] = useState('')
+  const [codeSearchResult, setCodeSearchResult] = useState<Reservation | null>(null)
+  const [codeSearching, setCodeSearching] = useState(false)
 
   const loadReservations = useCallback(async () => {
     setIsLoading(true)
@@ -76,6 +79,39 @@ export const ReservationsPage: React.FC = () => {
     } catch {
       toast.error('İade başarısız')
     }
+  }
+
+  const handleCodeSearch = async () => {
+    const code = codeQuery.trim().toUpperCase()
+    if (!code) {
+      setCodeSearchResult(null)
+      return
+    }
+    setCodeSearching(true)
+    try {
+      const { data } = await reservationsApi.getByCode(code)
+      if (data.data) {
+        setCodeSearchResult(data.data)
+        // Bulunan rezervasyonun tarihine de geç
+        if (data.data.date) {
+          const [y, m, d] = data.data.date.split('-').map(Number)
+          setSelectedDate(new Date(y, m - 1, d))
+        }
+      } else {
+        setCodeSearchResult(null)
+        toast.error('Bu kodla bir rezervasyon bulunamadı')
+      }
+    } catch {
+      setCodeSearchResult(null)
+      toast.error('Bu kodla bir rezervasyon bulunamadı')
+    } finally {
+      setCodeSearching(false)
+    }
+  }
+
+  const clearCodeSearch = () => {
+    setCodeQuery('')
+    setCodeSearchResult(null)
   }
 
   // Calendar days
@@ -183,6 +219,30 @@ export const ReservationsPage: React.FC = () => {
               {todayFilteredRes.length} rezervasyon
             </p>
           </div>
+          {/* Kod ile arama — müşteri restorana gelince personel kodu girer */}
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+            <input
+              type="text"
+              value={codeQuery}
+              onChange={(e) => setCodeQuery(e.target.value.toUpperCase())}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCodeSearch() }}
+              placeholder="Kod ara (ör. EF7K2N)"
+              className="w-44 pl-8 pr-8 py-2 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl text-xs font-mono uppercase tracking-wider text-[var(--color-text)] placeholder-[var(--color-text-muted)]/40 focus:outline-none focus:border-[var(--color-accent)]/50"
+            />
+            {codeQuery && (
+              <button
+                onClick={clearCodeSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                title="Aramayı temizle"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+          <Button size="sm" variant="secondary" loading={codeSearching} onClick={handleCodeSearch} disabled={!codeQuery.trim()}>
+            Bul
+          </Button>
           <Button icon={<Plus size={16} />} onClick={() => { setEditReservation(undefined); setModalOpen(true) }}>
             Yeni Rezervasyon
           </Button>
@@ -222,7 +282,12 @@ export const ReservationsPage: React.FC = () => {
             <div className="space-y-2">
               {todayFilteredRes.sort((a, b) => a.time.localeCompare(b.time)).map((res) => (
                 <div key={res.id}
-                  className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 hover:border-[var(--color-accent)]/20 transition-all duration-200 shadow-card">
+                  className={cn(
+                    'bg-[var(--color-surface)] border rounded-2xl p-4 hover:border-[var(--color-accent)]/20 transition-all duration-200 shadow-card',
+                    codeSearchResult?.id === res.id
+                      ? 'border-[var(--color-accent)] ring-2 ring-[var(--color-accent)]/30'
+                      : 'border-[var(--color-border)]'
+                  )}>
                   <div className="flex items-start gap-3">
                     {/* Time badge */}
                     <div className="flex-shrink-0 text-center bg-[var(--color-surface2)] rounded-xl px-3 py-2 border border-[var(--color-border)]">
@@ -231,9 +296,18 @@ export const ReservationsPage: React.FC = () => {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        {/* Rezervasyon Kodu — büyük, mono, vurgulu */}
+                        {res.code && (
+                          <span
+                            title="Rezervasyon kodu"
+                            className="font-mono font-bold text-sm tracking-[0.2em] text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-2 py-0.5 rounded-lg select-all"
+                          >
+                            {res.code}
+                          </span>
+                        )}
                         <p className="font-semibold text-[var(--color-text)] font-body">
-                          {res.tableName ? `📍 ${res.tableName}` : 'Genel rezervasyon'}
+                          {res.tableName ? `📍 ${res.tableName}` : 'Genel'}
                         </p>
                         <Badge variant={STATUS_MAP[res.status].variant} dot>
                           {STATUS_MAP[res.status].label}

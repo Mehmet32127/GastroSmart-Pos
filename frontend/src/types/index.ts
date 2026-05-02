@@ -120,6 +120,7 @@ export type ReservationStatus = 'pending' | 'confirmed' | 'seated' | 'completed'
 
 export interface Reservation {
   id: string
+  code: string | null
   tableId?: string
   tableName?: string
   guestCount: number

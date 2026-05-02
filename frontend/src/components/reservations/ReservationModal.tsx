@@ -9,6 +9,7 @@ import { reservationsApi } from '@/api/reservations'
 import { tablesApi } from '@/api/tables'
 import type { Reservation, Table } from '@/types'
 import { useState } from 'react'
+import { Copy, Check, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const schema = z.object({
@@ -35,6 +36,9 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
 }) => {
   const [tables, setTables] = useState<Table[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  // Yeni rezervasyon başarıyla oluşunca kodu burada tutar — ekranda büyük gösterilir
+  const [createdReservation, setCreatedReservation] = useState<Reservation | null>(null)
+  const [copied, setCopied] = useState(false)
   const isEdit = !!reservation
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
@@ -86,12 +90,21 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       if (isEdit && reservation) {
         await reservationsApi.update(reservation.id, payload)
         toast.success('Rezervasyon güncellendi')
+        onSuccess()
+        onClose()
       } else {
-        await reservationsApi.create(payload)
-        toast.success('Rezervasyon oluşturuldu')
+        const res = await reservationsApi.create(payload)
+        const created = res.data.data
+        if (created) {
+          // Modal'ı kapatma — onay ekranına geç (kod görüntüsü)
+          setCreatedReservation(created)
+          onSuccess()
+        } else {
+          toast.success('Rezervasyon oluşturuldu')
+          onSuccess()
+          onClose()
+        }
       }
-      onSuccess()
-      onClose()
     } catch {
       toast.error('İşlem başarısız')
     } finally {
@@ -99,10 +112,127 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     }
   }
 
+  const handleCopyCode = async () => {
+    if (!createdReservation?.code) return
+    try {
+      await navigator.clipboard.writeText(createdReservation.code)
+      setCopied(true)
+      toast.success('Kod kopyalandı')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('Kopyalanamadı — manuel olarak alın')
+    }
+  }
+
+  const handlePrintCode = () => {
+    if (!createdReservation?.code) return
+    const code = createdReservation.code
+    const tableInfo = createdReservation.tableName ? `Masa: ${createdReservation.tableName}` : ''
+    const w = window.open('', '_blank', 'width=400,height=300')
+    if (!w) return
+    w.document.write(`
+      <html>
+        <head><title>Rezervasyon Kodu</title>
+          <style>
+            body { font-family: monospace; text-align: center; padding: 20px; }
+            .code { font-size: 64px; font-weight: bold; letter-spacing: 8px; margin: 20px 0; padding: 20px; border: 2px dashed #000; }
+            .info { margin: 8px 0; font-size: 14px; }
+            .footer { margin-top: 20px; font-size: 11px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="info"><strong>REZERVASYON KODU</strong></div>
+          <div class="code">${code}</div>
+          <div class="info">${createdReservation.date} - ${createdReservation.time}</div>
+          <div class="info">${createdReservation.guestCount} kişi</div>
+          ${tableInfo ? `<div class="info">${tableInfo}</div>` : ''}
+          <div class="footer">Bu kodu rezervasyon günü gelirken yanınızda bulundurun.</div>
+          <script>window.print(); window.onafterprint = () => window.close();</script>
+        </body>
+      </html>
+    `)
+    w.document.close()
+  }
+
+  const handleCloseAll = () => {
+    setCreatedReservation(null)
+    setCopied(false)
+    onClose()
+  }
+
   const tableOptions = [
     { value: '', label: 'Masa seçin (isteğe bağlı)' },
     ...tables.map((t) => ({ value: t.id, label: `${t.name} (${t.capacity} kişi)` })),
   ]
+
+  // Onay ekranı — yeni rezervasyon başarıyla oluşunca açılır
+  if (createdReservation) {
+    return (
+      <Modal
+        isOpen={true}
+        onClose={handleCloseAll}
+        title="Rezervasyon Oluşturuldu"
+        size="md"
+        footer={
+          <Button onClick={handleCloseAll}>Tamam</Button>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <p className="text-sm text-[var(--color-text-muted)] font-body text-center">
+            Müşterinize bu kodu verin. Rezervasyon günü kodu söylediğinde sistemde aratılacak.
+          </p>
+
+          <div className="rounded-2xl border-2 border-dashed border-[var(--color-accent)]/40 bg-[var(--color-accent)]/5 p-6 text-center">
+            <p className="text-xs text-[var(--color-text-muted)] font-body mb-2 uppercase tracking-wider">Rezervasyon Kodu</p>
+            <p className="text-5xl font-bold font-mono text-[var(--color-accent)] tracking-[0.3em] select-all">
+              {createdReservation.code}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="bg-[var(--color-surface2)] rounded-xl p-3">
+              <p className="text-[10px] text-[var(--color-text-muted)] font-body uppercase">Tarih</p>
+              <p className="text-sm font-semibold font-body text-[var(--color-text)] mt-1">{createdReservation.date}</p>
+            </div>
+            <div className="bg-[var(--color-surface2)] rounded-xl p-3">
+              <p className="text-[10px] text-[var(--color-text-muted)] font-body uppercase">Saat</p>
+              <p className="text-sm font-semibold font-mono text-[var(--color-accent)] mt-1">{createdReservation.time}</p>
+            </div>
+            <div className="bg-[var(--color-surface2)] rounded-xl p-3">
+              <p className="text-[10px] text-[var(--color-text-muted)] font-body uppercase">Kişi</p>
+              <p className="text-sm font-semibold font-body text-[var(--color-text)] mt-1">{createdReservation.guestCount}</p>
+            </div>
+          </div>
+
+          {createdReservation.tableName && (
+            <div className="bg-[var(--color-surface2)] rounded-xl p-3 text-center">
+              <p className="text-[10px] text-[var(--color-text-muted)] font-body uppercase">Masa</p>
+              <p className="text-sm font-semibold font-body text-[var(--color-text)] mt-1">📍 {createdReservation.tableName}</p>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              fullWidth
+              icon={copied ? <Check size={14} /> : <Copy size={14} />}
+              onClick={handleCopyCode}
+            >
+              {copied ? 'Kopyalandı' : 'Kodu Kopyala'}
+            </Button>
+            <Button
+              variant="secondary"
+              fullWidth
+              icon={<Printer size={14} />}
+              onClick={handlePrintCode}
+            >
+              Yazdır
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
 
   return (
     <Modal

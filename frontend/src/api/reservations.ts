@@ -28,6 +28,9 @@ export const reservationsApi = {
   getById: (id: string) =>
     client.get<ApiResponse<Reservation>>(`/reservations/${id}`),
 
+  getByCode: (code: string) =>
+    client.get<ApiResponse<Reservation>>(`/reservations/by-code/${encodeURIComponent(code)}`),
+
   create: (data: CreateReservationPayload) =>
     client.post<ApiResponse<Reservation>>('/reservations', data),
 
