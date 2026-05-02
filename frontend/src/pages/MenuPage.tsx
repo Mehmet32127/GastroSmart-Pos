@@ -68,9 +68,17 @@ export const MenuPage: React.FC = () => {
     setEditItem(item)
     if (item) {
       reset({
-        name: item.name, categoryId: item.categoryId, price: item.price,
-        cost: item.cost, tax: item.tax, stock: item.stock,
-        unit: item.unit, description: item.description, active: item.active,
+        name:        item.name,
+        categoryId:  item.categoryId,
+        price:       item.price,
+        cost:        item.cost ?? 0,
+        tax:         item.tax  ?? 8,
+        // Stok inputu artık her zaman mevcut değeri gösterir; null ise 0 olarak başlar.
+        // Kullanıcı istemezse 0'da bırakabilir veya silip boş yapabilir (sınırsız).
+        stock:       item.stock ?? 0,
+        unit:        item.unit ?? 'adet',
+        description: item.description ?? '',
+        active:      item.active,
       })
     } else {
       reset({ tax: 8, unit: 'adet', active: true })
