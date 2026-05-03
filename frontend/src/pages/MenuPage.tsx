@@ -13,13 +13,18 @@ import type { MenuItem, Category } from '@/types'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 
+// Boş string'i undefined'a çeviren önişlemci.
+// z.coerce.number() boş string'i 0'a çevirir — bu istemediğimiz davranış
+// (özellikle stoğu boş bırakmak "sınırsız" anlamına geliyor, 0 değil).
+const emptyToUndefined = (val: unknown) => (val === '' || val === null ? undefined : val)
+
 const itemSchema = z.object({
   name: z.string().min(1, 'Ürün adı gerekli'),
   categoryId: z.string().min(1, 'Kategori seçin'),
   price: z.coerce.number().min(0.01, 'Fiyat gerekli'),
-  cost: z.coerce.number().min(0).optional(),
+  cost: z.preprocess(emptyToUndefined, z.coerce.number().min(0).optional()),
   tax: z.coerce.number().min(0).max(100).default(8),
-  stock: z.coerce.number().min(0).optional(),
+  stock: z.preprocess(emptyToUndefined, z.coerce.number().min(0).optional()),
   unit: z.string().default('adet'),
   description: z.string().optional(),
   active: z.boolean().default(true),
@@ -73,9 +78,11 @@ export const MenuPage: React.FC = () => {
         price:       item.price,
         cost:        item.cost ?? 0,
         tax:         item.tax  ?? 8,
-        // Stok inputu artık her zaman mevcut değeri gösterir; null ise 0 olarak başlar.
-        // Kullanıcı istemezse 0'da bırakabilir veya silip boş yapabilir (sınırsız).
-        stock:       item.stock ?? 0,
+        // Stok inputu: değer tanımlıysa gösterilir, null/undefined ise boş kalır.
+        // Boş bırakılırsa stok takibi yapılmaz (sınırsız) — bu davranış formdaki
+        // "Boş = sınırsız" hint'iyle uyumlu. Default 0 KOYMA: Düzenle'ye basıp
+        // sadece fiyatı değiştirsen bile sınırsız stoklu ürünü 0'a düşürür.
+        stock:       item.stock ?? undefined,
         unit:        item.unit ?? 'adet',
         description: item.description ?? '',
         active:      item.active,
@@ -381,7 +388,7 @@ export const MenuPage: React.FC = () => {
             <Input label="KDV %" type="number" {...register('tax')} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Stok" type="number" {...register('stock')} hint="Boş = sınırsız" />
+            <Input label="Stok" type="number" {...register('stock')} placeholder="Sınırsız" hint="Boş = stok takibi yok (sınırsız)" />
             <Input label="Birim" placeholder="adet" {...register('unit')} />
           </div>
           <Textarea label="Açıklama" {...register('description')} />
