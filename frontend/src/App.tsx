@@ -9,6 +9,8 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginPage }            from '@/pages/LoginPage'
 import { ForgotPasswordPage }   from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage }    from '@/pages/ResetPasswordPage'
+import { AdminLoginPage }       from '@/pages/admin/AdminLoginPage'
+import { AdminDashboardPage }   from '@/pages/admin/AdminDashboardPage'
 import { TablesPage }       from '@/pages/TablesPage'
 import { OrdersPage }       from '@/pages/OrdersPage'
 import { ReservationsPage } from '@/pages/ReservationsPage'
@@ -110,6 +112,11 @@ export const App: React.FC = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+
+        {/* Süper-admin (sistem sahibi) — tenant kullanıcılarından bağımsız */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
 
         {/* Protected — wrapped in AppLayout */}
         <Route element={<AppLayout />}>
