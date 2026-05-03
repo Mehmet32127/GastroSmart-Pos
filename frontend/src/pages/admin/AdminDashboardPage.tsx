@@ -8,12 +8,6 @@ import { adminApi, type Tenant, type CreateTenantResponse } from '@/api/admin'
 import { useAdminAuthStore } from '@/store/adminAuthStore'
 import toast from 'react-hot-toast'
 
-const PLAN_LABELS: Record<Tenant['plan'], string> = {
-  trial:   'Deneme',
-  starter: 'Başlangıç',
-  pro:     'Pro',
-}
-
 export const AdminDashboardPage: React.FC = () => {
   const { isAuthenticated, email, logout } = useAdminAuthStore()
   const [tenants, setTenants] = useState<Tenant[]>([])
@@ -117,7 +111,6 @@ export const AdminDashboardPage: React.FC = () => {
                       <Badge variant={t.active ? 'success' : 'muted'} dot>
                         {t.active ? 'Aktif' : 'Pasif'}
                       </Badge>
-                      <Badge variant="muted">{PLAN_LABELS[t.plan]}</Badge>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] font-body flex-wrap">
                       <span>DB: <strong className="font-mono">{t.dbName}</strong></span>
@@ -181,7 +174,6 @@ const CreateTenantModal: React.FC<CreateModalProps> = ({ isOpen, onClose, onCrea
   const [name, setName] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
   const [contactEmail, setContactEmail] = useState('')
-  const [plan, setPlan] = useState<Tenant['plan']>('trial')
   const [saving, setSaving] = useState(false)
 
   // Slug otomatik öneri: name'den türet (kullanıcı override edebilir)
@@ -193,7 +185,7 @@ const CreateTenantModal: React.FC<CreateModalProps> = ({ isOpen, onClose, onCrea
   }
 
   const reset = () => {
-    setSlug(''); setName(''); setAdminEmail(''); setContactEmail(''); setPlan('trial')
+    setSlug(''); setName(''); setAdminEmail(''); setContactEmail('')
   }
 
   const handleSubmit = async () => {
@@ -212,7 +204,6 @@ const CreateTenantModal: React.FC<CreateModalProps> = ({ isOpen, onClose, onCrea
         name:         name.trim(),
         adminEmail:   adminEmail.trim(),
         contactEmail: contactEmail.trim() || undefined,
-        plan,
       })
       toast.success('Restoran oluşturuldu')
       reset()
@@ -236,13 +227,13 @@ const CreateTenantModal: React.FC<CreateModalProps> = ({ isOpen, onClose, onCrea
       </>}
     >
       <div className="space-y-4">
-        <Input label="Restoran Adı *" value={name} onChange={handleNameChange} placeholder="Mehmet'in Kafesi" />
+        <Input label="Restoran Adı *" value={name} onChange={handleNameChange} placeholder="Restoranın adı" />
         <Input
           label="Slug (URL'de kullanılır) *"
           value={slug}
           onChange={(v) => setSlug(v.toLowerCase())}
-          placeholder="kafe-mehmet"
-          hint="küçük harf, rakam ve tire — örn: kafe-mehmet"
+          placeholder="restoran-adi"
+          hint="küçük harf, rakam ve tire içerebilir"
           mono
         />
         <Input
@@ -250,7 +241,7 @@ const CreateTenantModal: React.FC<CreateModalProps> = ({ isOpen, onClose, onCrea
           type="email"
           value={adminEmail}
           onChange={setAdminEmail}
-          placeholder="sahip@ornek.com"
+          placeholder="yonetici@gmail.com"
           hint="Restoran sahibinin giriş e-postası — geçici şifre ile birlikte verilir"
         />
         <Input
@@ -258,20 +249,8 @@ const CreateTenantModal: React.FC<CreateModalProps> = ({ isOpen, onClose, onCrea
           type="email"
           value={contactEmail}
           onChange={setContactEmail}
-          placeholder="info@restoran.com"
+          placeholder="iletisim@gmail.com"
         />
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">Plan</label>
-          <select
-            value={plan}
-            onChange={(e) => setPlan(e.target.value as Tenant['plan'])}
-            className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm font-body text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
-          >
-            <option value="trial">Deneme</option>
-            <option value="starter">Başlangıç</option>
-            <option value="pro">Pro</option>
-          </select>
-        </div>
       </div>
     </Modal>
   )
