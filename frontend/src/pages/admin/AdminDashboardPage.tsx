@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Plus, LogOut, ShieldCheck, Building2, Copy, Check, Power, AlertTriangle } from 'lucide-react'
+import { Plus, LogOut, ShieldCheck, Building2, Copy, Check, Power, AlertTriangle, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Badge, Card, Spinner, EmptyState } from '@/components/ui/common'
@@ -16,6 +16,13 @@ export const AdminDashboardPage: React.FC = () => {
   const [created, setCreated] = useState<CreateTenantResponse | null>(null)
   const [togglingSlug, setTogglingSlug] = useState<string | null>(null)
   const [confirmDeactivate, setConfirmDeactivate] = useState<Tenant | null>(null)
+  const [resetForTenant, setResetForTenant] = useState<Tenant | null>(null)
+  const [resetResult, setResetResult] = useState<{
+    tenantName: string
+    adminUsername: string
+    adminEmail: string | null
+    tempPassword: string
+  } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -118,15 +125,26 @@ export const AdminDashboardPage: React.FC = () => {
                       <span>· {new Date(t.createdAt).toLocaleDateString('tr-TR')}</span>
                     </div>
                   </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={<Power size={14} />}
-                    loading={togglingSlug === t.slug}
-                    onClick={() => t.active ? setConfirmDeactivate(t) : handleToggleActive(t)}
-                  >
-                    {t.active ? 'Pasifleştir' : 'Aktifleştir'}
-                  </Button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<KeyRound size={14} />}
+                      onClick={() => setResetForTenant(t)}
+                      title="Admin şifresini sıfırla"
+                    >
+                      Şifre
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<Power size={14} />}
+                      loading={togglingSlug === t.slug}
+                      onClick={() => t.active ? setConfirmDeactivate(t) : handleToggleActive(t)}
+                    >
+                      {t.active ? 'Pasifleştir' : 'Aktifleştir'}
+                    </Button>
+                  </div>
                 </div>
               </Card>
             ))}
@@ -158,7 +176,175 @@ export const AdminDashboardPage: React.FC = () => {
         onConfirm={() => confirmDeactivate && handleToggleActive(confirmDeactivate)}
         onCancel={() => setConfirmDeactivate(null)}
       />
+
+      {/* Şifre sıfırlama: re-auth gerektirir */}
+      <ResetPasswordReauthModal
+        tenant={resetForTenant}
+        onClose={() => setResetForTenant(null)}
+        onSuccess={(result) => {
+          setResetForTenant(null)
+          setResetResult(result)
+        }}
+      />
+
+      {/* Yeni şifre sonuç modal'ı */}
+      <ResetPasswordResultModal
+        info={resetResult}
+        onClose={() => setResetResult(null)}
+      />
     </div>
+  )
+}
+
+// ─── Şifre sıfırlama re-auth modal ───────────────────────────────────────────
+const ResetPasswordReauthModal: React.FC<{
+  tenant: Tenant | null
+  onClose: () => void
+  onSuccess: (result: NonNullable<Parameters<typeof Object>[0]> & {
+    tenantName: string
+    adminUsername: string
+    adminEmail: string | null
+    tempPassword: string
+  }) => void
+}> = ({ tenant, onClose, onSuccess }) => {
+  const [password, setPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // Modal kapatıldığında alanı temizle
+  useEffect(() => {
+    if (!tenant) { setPassword(''); setShowPwd(false) }
+  }, [tenant])
+
+  if (!tenant) return null
+
+  const handleSubmit = async () => {
+    if (!password) {
+      toast.error('Süper-admin şifresi gerekli')
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await adminApi.resetAdminPassword(tenant.slug, password)
+      const d = res.data.data
+      toast.success('Şifre sıfırlandı')
+      onSuccess({
+        tenantName:    d.tenantName,
+        adminUsername: d.adminUsername,
+        adminEmail:    d.adminEmail,
+        tempPassword:  d.tempPassword,
+      })
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Şifre sıfırlanamadı')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={() => { if (!saving) onClose() }}
+      title="Admin Şifresini Sıfırla"
+      size="sm"
+      footer={<>
+        <Button variant="secondary" onClick={onClose} disabled={saving}>İptal</Button>
+        <Button onClick={handleSubmit} loading={saving} disabled={!password}>Sıfırla</Button>
+      </>}
+    >
+      <div className="space-y-4">
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 flex gap-2">
+          <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-400 font-body space-y-1">
+            <p><strong>{tenant.name}</strong> restoranının admin şifresi yeniden oluşturulacak.</p>
+            <p>Eski şifre geçersiz olur. Yeni şifre tek seferlik gösterilecek.</p>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">
+            Devam etmek için <strong className="text-[var(--color-text)]">süper-admin şifrenizi</strong> tekrar girin
+          </label>
+          <div className="relative">
+            <input
+              type={showPwd ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && password && !saving) handleSubmit() }}
+              autoFocus
+              autoComplete="current-password"
+              className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 pr-10 text-sm font-body text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPwd(!showPwd)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+              tabIndex={-1}
+            >
+              {showPwd ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ─── Şifre sıfırlama sonuç modal ─────────────────────────────────────────────
+const ResetPasswordResultModal: React.FC<{
+  info: { tenantName: string; adminUsername: string; adminEmail: string | null; tempPassword: string } | null
+  onClose: () => void
+}> = ({ info, onClose }) => {
+  const [copied, setCopied] = useState(false)
+  if (!info) return null
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(info.tempPassword)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { toast.error('Kopyalanamadı') }
+  }
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="Yeni Şifre Oluşturuldu"
+      size="md"
+      footer={<Button onClick={onClose}>Tamam</Button>}
+    >
+      <div className="space-y-4">
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 flex gap-2">
+          <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-400 font-body">
+            Yeni şifre <strong>sadece bu pencerede</strong> gösterilir. Pencereyi kapatınca tekrar göremezsin — şimdi kopyala ve restoran sahibine ilet.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-body text-[var(--color-text-muted)]">Restoran:</p>
+          <p className="text-base font-semibold font-body text-[var(--color-text)]">{info.tenantName}</p>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-body text-[var(--color-text-muted)]">Yeni giriş bilgileri:</p>
+          <div className="bg-[var(--color-surface2)] rounded-xl p-3 space-y-2 font-mono text-sm">
+            <div><span className="text-[var(--color-text-muted)]">Kullanıcı adı:</span> <strong className="text-[var(--color-text)]">{info.adminUsername}</strong></div>
+            {info.adminEmail && (
+              <div><span className="text-[var(--color-text-muted)]">E-posta:</span> <strong className="text-[var(--color-text)]">{info.adminEmail}</strong></div>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-[var(--color-text-muted)]">Şifre:</span>
+              <strong className="text-[var(--color-accent)] tracking-wider select-all">{info.tempPassword}</strong>
+              <button onClick={handleCopy} className="ml-auto text-[var(--color-text-muted)] hover:text-[var(--color-accent)]">
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Modal>
   )
 }
 

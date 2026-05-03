@@ -74,4 +74,16 @@ export const adminApi = {
 
   deleteTenant: (slug: string) =>
     adminClient.delete<{ success: boolean; data: Tenant }>(`/tenants/${slug}`),
+
+  resetAdminPassword: (slug: string, superadminPassword: string) =>
+    adminClient.post<{
+      success: boolean;
+      data: {
+        tenantSlug: string
+        tenantName: string
+        adminUsername: string
+        adminEmail: string | null
+        tempPassword: string
+      }
+    }>(`/tenants/${slug}/reset-admin-password`, { superadminPassword }),
 }
