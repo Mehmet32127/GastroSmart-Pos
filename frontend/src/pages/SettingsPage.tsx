@@ -34,7 +34,8 @@ export const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
 
-  // Yazıcı ayarları — localStorage'da tutulur (sunucu gerektirmez)
+  // Yazıcı kağıt boyutu — DB'de saklanır (tüm cihazlarda tutarlı), ayrıca
+  // localStorage'a da yazılır (offline cihazda hızlı okuma için)
   const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>(() =>
     (localStorage.getItem('gastro_paper_width') as '58mm' | '80mm') ?? '80mm'
   )
@@ -76,6 +77,11 @@ export const SettingsPage: React.FC = () => {
             currency:       s.currency ?? 'TRY',
             timezone:       s.timezone ?? 'Europe/Istanbul',
           })
+          // DB'deki paperWidth localStorage'dan ÜSTÜN — yeni cihazda da tutarlı
+          if (s.paperWidth === '58mm' || s.paperWidth === '80mm') {
+            setPaperWidth(s.paperWidth)
+            localStorage.setItem('gastro_paper_width', s.paperWidth)
+          }
         }
       })
       .catch(() => toast.error('Ayarlar yüklenemedi'))
@@ -97,6 +103,7 @@ export const SettingsPage: React.FC = () => {
         receiptFooter:  data.receiptFooter.trim(),
         currency:       data.currency,
         timezone:       data.timezone,
+        paperWidth,     // DB'ye de kaydedilir — tüm cihazlarda tutarlı
       })
       localStorage.setItem('gastro_paper_width', paperWidth)
       setActiveCurrency(data.currency)

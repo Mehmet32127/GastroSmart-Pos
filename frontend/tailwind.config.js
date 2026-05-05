@@ -78,6 +78,19 @@ export default {
           '100%': { backgroundPosition: '200% 0' },
         },
       },
+      // Köşe yuvarlama tema ayarına bağlı: themeStore --border-radius CSS var'ı set ediyor.
+      // Tüm Tailwind border-radius utility'leri bu base değerden ölçeklenir.
+      borderRadius: {
+        none: '0',
+        sm:  'calc(var(--border-radius, 12px) * 0.33)',
+        DEFAULT: 'calc(var(--border-radius, 12px) * 0.66)',
+        md:  'calc(var(--border-radius, 12px) * 0.66)',
+        lg:  'calc(var(--border-radius, 12px) * 0.83)',
+        xl:  'var(--border-radius, 12px)',
+        '2xl': 'calc(var(--border-radius, 12px) * 1.33)',
+        '3xl': 'calc(var(--border-radius, 12px) * 2)',
+        full: '9999px',
+      },
       backdropBlur: { xs: '2px' },
       boxShadow: {
         'glow-brand': '0 0 20px rgba(245,158,11,0.3)',

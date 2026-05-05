@@ -35,11 +35,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, ord
   const [printers, setPrinters]     = useState<{ name: string; isDefault: boolean }[]>([])
 
   const isElectron  = !!window.electronAPI?.isElectron
-  const receiptUrl  = `${CONFIG.API_BASE}/api/print/receipt/${order.id}/raw`
 
   // Saved printer preferences
   const savedPrinter = localStorage.getItem('gastro_printer_name') ?? ''
   const savedPaper   = (localStorage.getItem('gastro_paper_width') ?? '80mm') as '58mm' | '80mm'
+
+  // Kağıt boyutu fiş HTML'ine query param olarak gider — backend buna göre genişlik üretir
+  const receiptUrl  = `${CONFIG.API_BASE}/api/print/receipt/${order.id}/raw?width=${savedPaper}`
 
   useEffect(() => {
     if (!isOpen) return
@@ -53,7 +55,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, ord
 
   const getReceiptHtml = async (): Promise<string | null> => {
     try {
-      const { data } = await client.get(`/print/receipt/${order.id}`)
+      const { data } = await client.get(`/print/receipt/${order.id}`, { params: { width: savedPaper } })
       return data.data?.html ?? null
     } catch {
       return null

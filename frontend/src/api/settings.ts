@@ -12,6 +12,7 @@ export const settingsApi = {
       receiptFooter?: string
       currency: string
       timezone: string
+      paperWidth?: '58mm' | '80mm'
     }>>('/settings'),
 
   update: (data: Record<string, unknown>) =>
