@@ -66,6 +66,10 @@ export const adminApi = {
   listTenants: () =>
     adminClient.get<{ success: boolean; data: Tenant[] }>('/tenants'),
 
+  // Public — auth gerektirmez. Login dropdown'ında kullanılır.
+  listPublicTenants: () =>
+    adminClient.get<{ success: boolean; data: { slug: string; name: string }[] }>('/tenants/public/list'),
+
   createTenant: (data: CreateTenantPayload) =>
     adminClient.post<{ success: boolean; data: CreateTenantResponse; message?: string }>('/tenants', data),
 
