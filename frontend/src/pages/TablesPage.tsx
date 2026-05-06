@@ -356,19 +356,23 @@ export const TablesPage: React.FC = () => {
 
         {/* Filtre çubuğu */}
         <div className="flex items-center gap-2 px-5 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface)] overflow-x-auto">
-          {sections.map(sec => (
-            <button key={sec} onClick={() => setSectionFilter(sec)}
-              className={cn(
-                'flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium font-body whitespace-nowrap transition-all',
-                sectionFilter === sec
-                  ? 'bg-[var(--color-accent)] text-[var(--color-accent-text)]'
-                  : 'bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-              )}>
-              {sec}
-            </button>
-          ))}
-
-          <div className="w-px h-5 bg-[var(--color-border)] mx-1 flex-shrink-0" />
+          {/* Bölüm filtresi — sadece tanımlı bölüm varsa göster (yoksa ikinci bir "Tümü" butonu görünmesin) */}
+          {allSections.length > 0 && (
+            <>
+              {sections.map(sec => (
+                <button key={sec} onClick={() => setSectionFilter(sec)}
+                  className={cn(
+                    'flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium font-body whitespace-nowrap transition-all',
+                    sectionFilter === sec
+                      ? 'bg-[var(--color-accent)] text-[var(--color-accent-text)]'
+                      : 'bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                  )}>
+                  {sec}
+                </button>
+              ))}
+              <div className="w-px h-5 bg-[var(--color-border)] mx-1 flex-shrink-0" />
+            </>
+          )}
 
           {STATUS_FILTERS.map(f => (
             <button key={f.value} onClick={() => setStatusFilter(f.value)}
