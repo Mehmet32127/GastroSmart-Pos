@@ -21,7 +21,9 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export const ResetPasswordPage: React.FC = () => {
-  const { token } = useParams<{ token: string }>()
+  const { token, slug } = useParams<{ token: string; slug?: string }>()
+  const loginPath = slug ? `/r/${slug}/login` : '/login'
+  const forgotPath = slug ? `/r/${slug}/forgot-password` : '/forgot-password'
   const navigate = useNavigate()
   const [showPw, setShowPw]     = useState(false)
   const [done, setDone]         = useState(false)
@@ -38,7 +40,7 @@ export const ResetPasswordPage: React.FC = () => {
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-8 max-w-sm text-center">
           <h1 className="text-xl font-bold text-[var(--color-text)] mb-2 font-display">Geçersiz Link</h1>
           <p className="text-sm text-[var(--color-text-muted)] font-body mb-4">Bu link geçersiz veya bozuk.</p>
-          <Link to="/forgot-password" className="text-[var(--color-accent)] font-semibold text-sm font-body">Yeni link iste</Link>
+          <Link to={forgotPath} className="text-[var(--color-accent)] font-semibold text-sm font-body">Yeni link iste</Link>
         </div>
       </div>
     )
@@ -51,7 +53,7 @@ export const ResetPasswordPage: React.FC = () => {
       await authPasswordApi.resetPassword(token, data.newPassword)
       setDone(true)
       toast.success('Şifre güncellendi')
-      setTimeout(() => navigate('/login'), 2500)
+      setTimeout(() => navigate(loginPath), 2500)
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
       const msg = e?.response?.data?.error || 'Şifre sıfırlanamadı'
@@ -90,7 +92,7 @@ export const ResetPasswordPage: React.FC = () => {
                 Şifreniz başarıyla güncellendi. Yeni şifreniz ile giriş yapabilirsiniz.
               </p>
               <Link
-                to="/login"
+                to={loginPath}
                 className="block text-center w-full py-3 rounded-xl text-sm font-semibold font-body bg-[var(--color-accent)] text-[var(--color-accent-text)]"
               >
                 Giriş Yap

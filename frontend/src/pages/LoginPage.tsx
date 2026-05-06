@@ -185,7 +185,7 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <p className="text-center text-xs text-[var(--color-text-muted)]/40 font-body mt-6">
-          GastroSmart POS v1.0 · Yerel Ağ Modu
+          GastroSmart POS v1.0
         </p>
       </div>
     </div>
