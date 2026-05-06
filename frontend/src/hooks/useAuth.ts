@@ -21,6 +21,13 @@ export function useAuth() {
         const { user, tokens } = data.data
         setTokens(tokens.accessToken, tokens.refreshToken)
         setUser(user)
+
+        // Bir sonraki girişte hızlı bağlanmak için bu cihaza tenant slug'ı kaydet.
+        // Auto-discover yine çalışır ama slug verilirse direk o tenant'a yönlenir.
+        if (user.tenantSlug) {
+          localStorage.setItem('gastro_tenant_slug', user.tenantSlug)
+        }
+
         toast.success(`Hoş geldiniz, ${user.fullName}!`)
         navigate('/')
       }
