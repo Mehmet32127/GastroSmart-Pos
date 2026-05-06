@@ -1,15 +1,16 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, Lock, User, Wifi, WifiOff } from 'lucide-react'
+import { Eye, EyeOff, Lock, User, Wifi, WifiOff, Building2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useOfflineQueue } from '@/hooks/useOfflineQueue'
 
 const schema = z.object({
-  username: z.string().min(1, 'Kullanıcı adı gerekli'),
-  password: z.string().min(1, 'Şifre gerekli'),
+  tenantSlug: z.string().optional(),
+  username:   z.string().min(1, 'Kullanıcı adı gerekli'),
+  password:   z.string().min(1, 'Şifre gerekli'),
 })
 
 type FormData = z.infer<typeof schema>
@@ -17,14 +18,23 @@ type FormData = z.infer<typeof schema>
 export const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuth()
   const { isOnline } = useOfflineQueue()
+  const { slug: urlSlug } = useParams<{ slug?: string }>()
   const [showPw, setShowPw]           = useState(false)
   const [focused, setFocused]         = useState<string | null>(null)
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { tenantSlug: urlSlug ?? '' },
   })
 
-  const onSubmit = (data: FormData) => login(data)
+  // URL'den slug geldiyse readonly göster, yoksa kullanıcı yazabilir.
+  // Yine de slug boşsa login backend'de legacy mode'a düşer.
+  const onSubmit = (data: FormData) => {
+    login({
+      ...data,
+      tenantSlug: (data.tenantSlug?.trim() || undefined),
+    })
+  }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4 relative overflow-hidden">
@@ -65,6 +75,34 @@ export const LoginPage: React.FC = () => {
         {/* Card */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-card">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Tenant Slug — URL'den otomatik gelir, gelmemişse manuel */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-[var(--color-text-muted)] font-body">
+                Restoran Kodu
+              </label>
+              <div className={`relative flex items-center transition-all duration-200 rounded-xl border ${
+                focused === 'tenantSlug'
+                  ? 'border-[var(--color-accent)]/50 shadow-[0_0_0_3px_var(--color-accent)/10]'
+                  : 'border-[var(--color-border)]'
+              }`}>
+                <div className="absolute left-3 text-[var(--color-text-muted)]"><Building2 size={16} /></div>
+                <input
+                  {...register('tenantSlug')}
+                  readOnly={!!urlSlug}
+                  autoComplete="organization"
+                  placeholder={urlSlug ? '' : 'restoran-kodu (boşsa demo)'}
+                  onFocus={() => setFocused('tenantSlug')}
+                  onBlur={() => setFocused(null)}
+                  className={`w-full bg-[var(--color-surface2)] rounded-xl pl-10 pr-4 py-3 text-sm font-mono text-[var(--color-text)] placeholder-[var(--color-text-muted)]/40 focus:outline-none ${urlSlug ? 'opacity-70' : ''}`}
+                />
+              </div>
+              {!urlSlug && (
+                <p className="text-[11px] text-[var(--color-text-muted)]/70 font-body">
+                  Restoran kodunuz yoksa boş bırakın (demo erişimi)
+                </p>
+              )}
+            </div>
+
             {/* Username */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-[var(--color-text-muted)] font-body">
@@ -135,10 +173,10 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Şifremi unuttum */}
+          {/* Şifremi unuttum — slug-aware path */}
           <div className="mt-4 text-center">
             <Link
-              to="/forgot-password"
+              to={urlSlug ? `/r/${urlSlug}/forgot-password` : '/forgot-password'}
               className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors font-body underline-offset-2 hover:underline"
             >
               Şifremi unuttum

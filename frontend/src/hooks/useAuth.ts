@@ -36,6 +36,8 @@ export function useAuth() {
   }
 
   const logout = async () => {
+    // Slug'ı clearAuth ÖNCE oku — logout sonrası aynı tenant'a yönlendirelim
+    const slugBefore = user?.tenantSlug
     try {
       const refreshToken = localStorage.getItem(CONFIG.REFRESH_STORAGE_KEY)
       if (refreshToken) await authApi.logout(refreshToken)
@@ -43,7 +45,7 @@ export function useAuth() {
       // Ignore errors on logout
     } finally {
       clearAuth()
-      navigate('/login')
+      navigate(slugBefore ? `/r/${slugBefore}/login` : '/login')
       toast.success('Çıkış yapıldı')
     }
   }

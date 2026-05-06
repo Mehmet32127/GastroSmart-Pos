@@ -18,9 +18,11 @@ export interface UpdateUserPayload {
 }
 
 export const authPasswordApi = {
-  forgotPassword: (email: string) =>
-    client.post<ApiResponse>('/auth/forgot-password', { email }),
+  // tenantSlug verilirse o restoran DB'sinde aranır, yoksa legacy demo
+  forgotPassword: (email: string, tenantSlug?: string) =>
+    client.post<ApiResponse>('/auth/forgot-password', { email, tenantSlug }),
 
+  // Token "slug.hex" formatında olabilir — backend kendi parse ediyor
   resetPassword: (token: string, newPassword: string) =>
     client.post<ApiResponse>('/auth/reset-password', { token, newPassword }),
 }

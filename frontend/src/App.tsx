@@ -108,10 +108,15 @@ export const App: React.FC = () => {
       />
 
       <Routes>
-        {/* Public */}
+        {/* Public — legacy (slug'sız) */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+
+        {/* Multi-tenant: tenant slug'lı login + reset URL'leri */}
+        <Route path="/r/:slug/login" element={<LoginPage />} />
+        <Route path="/r/:slug/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/r/:slug/reset-password/:token" element={<ResetPasswordPage />} />
 
         {/* Süper-admin (sistem sahibi) — tenant kullanıcılarından bağımsız */}
         <Route path="/admin/login" element={<AdminLoginPage />} />

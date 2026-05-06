@@ -10,6 +10,7 @@ export interface User {
   phone?: string
   active: boolean
   createdAt: string
+  tenantSlug?: string | null
 }
 
 export interface AuthTokens {
@@ -18,6 +19,7 @@ export interface AuthTokens {
 }
 
 export interface LoginCredentials {
+  tenantSlug?: string  // Multi-tenant: hangi restoran. Verilmezse legacy demo'ya bağlanır.
   username: string
   password: string
 }

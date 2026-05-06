@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -14,8 +14,12 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export const ForgotPasswordPage: React.FC = () => {
+  const { slug } = useParams<{ slug?: string }>()
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading]     = useState(false)
+
+  // Login sayfasına dönüş URL'i — slug varsa korur
+  const loginPath = slug ? `/r/${slug}/login` : '/login'
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -24,11 +28,9 @@ export const ForgotPasswordPage: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     setLoading(true)
     try {
-      await authPasswordApi.forgotPassword(data.email)
+      await authPasswordApi.forgotPassword(data.email, slug)
       setSubmitted(true)
     } catch {
-      // Backend her durumda 200 dönüyor (email enumeration koruması)
-      // Bu noktaya genelde gelmemeli ama yine de güvenli ele alalım
       toast.error('Bir hata oluştu, tekrar deneyin')
     } finally {
       setLoading(false)
@@ -71,7 +73,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 Email'i göremiyorsanız spam/gereksiz klasörünü kontrol edin.
               </p>
               <Link
-                to="/login"
+                to={loginPath}
                 className="block text-center w-full py-3 rounded-xl text-sm font-semibold font-body bg-[var(--color-accent)] text-[var(--color-accent-text)] active:scale-98 transition"
               >
                 Giriş Sayfasına Dön
@@ -105,7 +107,7 @@ export const ForgotPasswordPage: React.FC = () => {
               </button>
 
               <Link
-                to="/login"
+                to={loginPath}
                 className="flex items-center justify-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors font-body"
               >
                 <ArrowLeft size={12} />
