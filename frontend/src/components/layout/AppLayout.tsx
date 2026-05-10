@@ -8,11 +8,39 @@ import { useOfflineQueue } from '@/hooks/useOfflineQueue'
 import { useIdleLogout } from '@/hooks/useIdleLogout'
 import { useSettingsStore } from '@/store/settingsStore'
 import { setActiveCurrency } from '@/utils/format'
+import { authApi } from '@/api/auth'
 
 export const AppLayout: React.FC = () => {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, clearAuth, setUser } = useAuthStore()
   const { status } = useSocket()
   const { queue } = useOfflineQueue()
+  const [validating, setValidating] = useState(true)
+
+  // Boot'ta token'ı backend'e doğrulat — localStorage'a güvenmiyoruz.
+  // Token expire olmuş veya geçersizse interceptor zaten clearAuth atar,
+  // burada da ek olarak /me çağrısı yapıp güncel user bilgisini çekiyoruz.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setValidating(false)
+      return
+    }
+    let cancelled = false
+    authApi.me()
+      .then(({ data }) => {
+        if (cancelled) return
+        if (data.data) setUser(data.data)
+      })
+      .catch(() => {
+        if (cancelled) return
+        // Token geçersiz/expired → logout ve login'e yönlendir
+        clearAuth()
+      })
+      .finally(() => {
+        if (!cancelled) setValidating(false)
+      })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 30 dakika hareketsizlikte otomatik çıkış (5 dk önce uyarı)
   useIdleLogout(30, 5)
@@ -36,6 +64,15 @@ export const AppLayout: React.FC = () => {
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
   if (!isAuthenticated) return <Navigate to="/login" replace />
+
+  // Boot validate edilirken kısa loading — token reddedilirse otomatik logout olur
+  if (validating) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[var(--color-bg)]">
+        <div className="animate-spin w-6 h-6 border-2 border-[var(--color-accent)] border-t-transparent rounded-full" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--color-bg)] font-body relative">
