@@ -404,12 +404,9 @@ export const SettingsPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Save button (bottom) */}
-      <div className="flex justify-end pb-4">
-        <Button icon={<Save size={16} />} loading={saving} onClick={handleSave}>
-          Kaydet
-        </Button>
-      </div>
+      {/* Alttaki ekstra Kaydet butonu kaldırıldı — sayfa için tek "Kaydet"
+          (sağ üst), profil için ayrı "Profili Kaydet" (Hesabım kartında). */}
+      <div className="pb-4" />
     </div>
   )
 }

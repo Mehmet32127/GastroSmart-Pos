@@ -163,16 +163,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Collapse toggle */}
-      <button onClick={onToggle}
+      {/* Collapse toggle — boyut büyütüldü, ok belirgin görünür */}
+      <button
+        onClick={onToggle}
+        title={collapsed ? 'Menüyü aç' : 'Menüyü kapat'}
         className={cn(
-          'absolute -right-3 top-20 z-10',
-          'w-6 h-6 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]',
+          'absolute -right-3.5 top-20 z-10',
+          'w-7 h-7 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]',
           'flex items-center justify-center',
-          'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
-          'hover:border-[var(--color-accent)]/30 transition-all duration-200 shadow-card'
-        )}>
-        {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+          'text-[var(--color-text-muted)] hover:text-[var(--color-accent)]',
+          'hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-accent)]/10',
+          'transition-all duration-200 shadow-card'
+        )}
+      >
+        {collapsed ? <ChevronRight size={16} strokeWidth={2.5} /> : <ChevronLeft size={16} strokeWidth={2.5} />}
       </button>
     </aside>
   )
