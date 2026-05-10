@@ -8,7 +8,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' kullanıcı bir şey yazarken zorla refresh atmaz; yeni
+      // versiyon geldiğinde sadece kayıt edilir, kullanıcı sayfa kapatıp
+      // açtığında yeni sürüm yüklenir. 'autoUpdate' ise form doluyken bile
+      // page reload tetikleyebiliyordu.
+      registerType: 'prompt',
       manifest: {
         name: 'GastroSmart POS',
         short_name: 'GastroSmart',
