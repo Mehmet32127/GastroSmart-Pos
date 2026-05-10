@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Save, Building2, Phone, FileText, Globe, Receipt, Printer, Download } from 'lucide-react'
+import { Save, Building2, Phone, FileText, Globe, Receipt, Printer, Download, UserCircle } from 'lucide-react'
 import { Card } from '@/components/ui/common'
 import { Button } from '@/components/ui/Button'
 import { settingsApi } from '@/api/settings'
+import { authApi } from '@/api/auth'
 import { setActiveCurrency } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
+import { useAuth } from '@/hooks/useAuth'
 import client from '@/api/client'
 import toast from 'react-hot-toast'
 
@@ -41,6 +43,59 @@ export const SettingsPage: React.FC = () => {
   )
   const [downloading, setDownloading] = useState(false)
   const isAdmin = useAuthStore((s) => s.hasRole(['admin']))
+  const user = useAuthStore((s) => s.user)
+  const { logout } = useAuth()
+
+  // ── Hesabım — kullanıcı kendi profilini düzenler ──────────────────────────
+  const [profile, setProfile] = useState({
+    fullName: user?.fullName ?? '',
+    username: user?.username ?? '',
+    email:    user?.email    ?? '',
+    phone:    user?.phone    ?? '',
+  })
+  const [profileSaving, setProfileSaving] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        fullName: user.fullName,
+        username: user.username,
+        email:    user.email ?? '',
+        phone:    user.phone ?? '',
+      })
+    }
+  }, [user])
+
+  const handleSaveProfile = async () => {
+    if (!profile.fullName.trim() || !profile.username.trim()) {
+      toast.error('Ad ve kullanıcı adı boş olamaz')
+      return
+    }
+    setProfileSaving(true)
+    try {
+      const res = await authApi.updateProfile({
+        username: profile.username.trim(),
+        fullName: profile.fullName.trim(),
+        email:    profile.email.trim() || undefined,
+        phone:    profile.phone.trim() || undefined,
+      })
+      const updated = res.data.data
+      toast.success(updated?.requireRelogin
+        ? 'Kullanıcı adı değişti — tekrar giriş yapın'
+        : 'Profil güncellendi'
+      )
+      if (updated?.requireRelogin) {
+        // Username değiştiği için tüm token'lar iptal edildi → logout
+        setTimeout(() => logout(), 1500)
+      } else if (updated) {
+        useAuthStore.getState().setUser(updated)
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Profil güncellenemedi')
+    } finally {
+      setProfileSaving(false)
+    }
+  }
 
   const handleDownloadBackup = async () => {
     setDownloading(true)
@@ -142,6 +197,59 @@ export const SettingsPage: React.FC = () => {
           Kaydet
         </Button>
       </div>
+
+      {/* Hesabım — kullanıcının kendi profili */}
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold font-display text-[var(--color-text)] flex items-center gap-2">
+            <UserCircle size={16} className="text-[var(--color-accent)]" /> Hesabım
+          </h2>
+          <Button size="sm" loading={profileSaving} onClick={handleSaveProfile}>
+            Profili Kaydet
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">Ad Soyad *</label>
+            <input
+              value={profile.fullName}
+              onChange={(e) => setProfile((p) => ({ ...p, fullName: e.target.value }))}
+              className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm font-body text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">Kullanıcı Adı *</label>
+            <input
+              value={profile.username}
+              onChange={(e) => setProfile((p) => ({ ...p, username: e.target.value }))}
+              className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
+            />
+            <p className="text-[10px] text-[var(--color-text-muted)]/70 font-body">Değiştirirsen tekrar giriş yapman gerekir</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">E-posta</label>
+            <input
+              type="email"
+              value={profile.email}
+              onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
+              placeholder="ornek@gmail.com"
+              className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm font-body text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">Telefon</label>
+            <input
+              value={profile.phone}
+              onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))}
+              placeholder="0500 000 00 00"
+              className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm font-body text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
+            />
+          </div>
+        </div>
+        <p className="text-[10px] text-[var(--color-text-muted)]/70 font-body mt-3">
+          Şifreyi değiştirmek için "Şifre" butonu (yakında) veya "Şifremi unuttum" akışını kullan.
+        </p>
+      </Card>
 
       {/* Restaurant Info */}
       <Card>

@@ -16,4 +16,7 @@ export const authApi = {
 
   changePassword: (currentPassword: string, newPassword: string) =>
     client.post<ApiResponse>('/auth/change-password', { currentPassword, newPassword }),
+
+  updateProfile: (data: { username?: string; fullName?: string; email?: string; phone?: string }) =>
+    client.patch<ApiResponse<User & { requireRelogin?: boolean }>>('/auth/profile', data),
 }
