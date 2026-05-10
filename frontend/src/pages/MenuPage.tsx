@@ -302,8 +302,18 @@ export const MenuPage: React.FC = () => {
           {isLoading ? (
             <div className="flex items-center justify-center h-full"><Spinner size={32} /></div>
           ) : filtered.length === 0 ? (
-            <EmptyState icon={<Package size={24} />} title="Ürün bulunamadı"
-              action={<Button size="sm" icon={<Plus size={14} />} onClick={() => openItemModal()}>Ürün Ekle</Button>} />
+            <EmptyState
+              icon={<Package size={24} />}
+              title={items.length === 0 ? 'Henüz ürün eklenmemiş' : 'Ürün bulunamadı'}
+              description={
+                items.length === 0
+                  ? categories.length === 0
+                    ? 'Önce sol panelden bir kategori, sonra ürün ekleyin'
+                    : '"Ürün Ekle" ile başlayın'
+                  : 'Bu filtreyle eşleşen ürün yok'
+              }
+              action={<Button size="sm" icon={<Plus size={14} />} onClick={() => openItemModal()}>Ürün Ekle</Button>}
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {filtered.map((item) => (

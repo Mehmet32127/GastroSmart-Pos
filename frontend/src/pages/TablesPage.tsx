@@ -393,7 +393,20 @@ export const TablesPage: React.FC = () => {
           {isLoading ? (
             <div className="flex items-center justify-center h-64"><Spinner size={32} /></div>
           ) : filteredTables.length === 0 && !mgmtMode ? (
-            <EmptyState icon={<LayoutGrid size={24} />} title="Masa bulunamadı" description="Bu filtreyle eşleşen masa yok" />
+            <EmptyState
+              icon={<LayoutGrid size={24} />}
+              title={tables.length === 0 ? 'Henüz masa eklenmemiş' : 'Masa bulunamadı'}
+              description={
+                tables.length === 0
+                  ? canManage
+                    ? '"Düzenle" → "+ Masa Ekle" ile başlayabilirsiniz'
+                    : 'Yöneticinizden masa eklemesini isteyin'
+                  : 'Bu filtreyle eşleşen masa yok'
+              }
+              action={tables.length === 0 && canManage
+                ? <Button size="sm" icon={<Plus size={14} />} onClick={() => setMgmtMode(true)}>Masa Ekle</Button>
+                : undefined}
+            />
           ) : viewMode === 'grid' ? (
             <div className={cn('grid gap-3', GRID_COLS[cardSize])}>
               {mgmtMode && canManage && (
