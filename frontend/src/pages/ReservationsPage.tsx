@@ -129,9 +129,9 @@ export const ReservationsPage: React.FC = () => {
   const firstDayOfWeek = startOfMonth(calendarMonth).getDay()
 
   return (
-    <div className="flex h-full">
-      {/* LEFT: Mini Calendar */}
-      <div className="w-72 flex flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div className="flex h-full flex-col md:flex-row">
+      {/* LEFT: Mini Calendar — mobilde gizli, üstteki date input'la seçim yapılır */}
+      <div className="hidden md:flex w-72 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="p-4 border-b border-[var(--color-border)]">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold font-display text-[var(--color-text)]">
@@ -210,15 +210,25 @@ export const ReservationsPage: React.FC = () => {
       {/* RIGHT: Reservations list */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-          <div className="flex-1">
-            <h1 className="text-lg font-bold font-display text-[var(--color-text)]">
-              {format(selectedDate, 'dd MMMM yyyy', { locale: tr })} Rezervasyonları
+        <div className="flex flex-wrap items-center gap-2 px-3 py-3 md:gap-3 md:px-5 md:py-4 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base md:text-lg font-bold font-display text-[var(--color-text)] truncate">
+              {format(selectedDate, 'dd MMMM yyyy', { locale: tr })}
             </h1>
             <p className="text-xs text-[var(--color-text-muted)] font-body">
               {todayFilteredRes.length} rezervasyon
             </p>
           </div>
+          {/* Mobilde tarih seçici (sidebar gizli olduğu için) */}
+          <input
+            type="date"
+            value={format(selectedDate, 'yyyy-MM-dd')}
+            onChange={(e) => {
+              const [y, m, d] = e.target.value.split('-').map(Number)
+              if (y && m && d) setSelectedDate(new Date(y, m - 1, d))
+            }}
+            className="md:hidden bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-body text-[var(--color-text)] focus:outline-none"
+          />
           {/* Kod ile arama — müşteri restorana gelince personel kodu girer */}
           <div className="relative">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
