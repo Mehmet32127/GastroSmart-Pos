@@ -2,7 +2,11 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { App } from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { initSentry } from './config/sentry'
 import './index.css'
+
+// Sentry — render'dan önce init edilmeli ki tüm hatalar yakalansın
+initSentry()
 
 // PWA Service Worker registration
 import { registerSW } from 'virtual:pwa-register'
