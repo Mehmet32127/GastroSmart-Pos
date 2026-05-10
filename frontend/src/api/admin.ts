@@ -90,4 +90,16 @@ export const adminApi = {
         tempPassword: string
       }
     }>(`/tenants/${slug}/reset-admin-password`, { superadminPassword }),
+
+  seedDemo: (slug: string) =>
+    adminClient.post<{
+      success: boolean;
+      data: {
+        tenantSlug: string
+        categoriesAdded: number
+        itemsAdded: number
+        tablesAdded: number
+      }
+      message?: string
+    }>(`/tenants/${slug}/seed-demo`),
 }

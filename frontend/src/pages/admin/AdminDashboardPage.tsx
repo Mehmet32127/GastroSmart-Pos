@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Plus, LogOut, ShieldCheck, Building2, Copy, Check, Power, AlertTriangle, KeyRound, Eye, EyeOff } from 'lucide-react'
+import { Plus, LogOut, ShieldCheck, Building2, Copy, Check, Power, AlertTriangle, KeyRound, Eye, EyeOff, Database } from 'lucide-react'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Badge, Card, Spinner, EmptyState } from '@/components/ui/common'
@@ -16,6 +16,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [created, setCreated] = useState<CreateTenantResponse | null>(null)
   const [togglingSlug, setTogglingSlug] = useState<string | null>(null)
   const [confirmDeactivate, setConfirmDeactivate] = useState<Tenant | null>(null)
+  const [seedingSlug, setSeedingSlug] = useState<string | null>(null)
   const [resetForTenant, setResetForTenant] = useState<Tenant | null>(null)
   const [resetResult, setResetResult] = useState<{
     tenantName: string
@@ -42,6 +43,19 @@ export const AdminDashboardPage: React.FC = () => {
 
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />
+  }
+
+  const handleSeedDemo = async (tenant: Tenant) => {
+    setSeedingSlug(tenant.slug)
+    try {
+      const res = await adminApi.seedDemo(tenant.slug)
+      const d = res.data.data
+      toast.success(`${d.itemsAdded} ürün, ${d.tablesAdded} masa, ${d.categoriesAdded} kategori eklendi`)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Demo doldurulamadı')
+    } finally {
+      setSeedingSlug(null)
+    }
   }
 
   const handleToggleActive = async (tenant: Tenant) => {
@@ -125,7 +139,17 @@ export const AdminDashboardPage: React.FC = () => {
                       <span>· {new Date(t.createdAt).toLocaleDateString('tr-TR')}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<Database size={14} />}
+                      loading={seedingSlug === t.slug}
+                      onClick={() => handleSeedDemo(t)}
+                      title="Bu tenant'a örnek ürünler ve masalar ekle (mevcut data silinmez)"
+                    >
+                      Demo Doldur
+                    </Button>
                     <Button
                       variant="secondary"
                       size="sm"
