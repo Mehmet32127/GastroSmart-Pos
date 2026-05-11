@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Search, Bell, Wifi, WifiOff, TrendingUp, X, Check, CheckCheck, Menu } from 'lucide-react'
+import { Search, Bell, Wifi, WifiOff, TrendingUp, X, Check, CheckCheck, Menu, Sun, Moon, Volume2, VolumeX } from 'lucide-react'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
 import { cn, formatCurrency, formatRelative, getInitials } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
+import { CONFIG } from '@/config'
 import { useNotificationStore } from '@/store/notificationStore'
 import { reportsApi } from '@/api/reports'
 import type { ConnectionStatus } from '@/hooks/useSocket'
@@ -19,6 +21,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const { user } = useAuthStore()
   const { notifications, unreadCount, markRead, markAllRead } = useNotificationStore()
+  const { prefs, effectiveTheme, setTheme, toggleSound } = useUserPreferences()
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [notifOpen, setNotifOpen] = useState(false)
@@ -137,6 +140,26 @@ export const TopBar: React.FC<TopBarProps> = ({
         )}
       </div>
 
+      {/* Sesli bildirim toggle — kullanıcı tercihi */}
+      <button
+        onClick={toggleSound}
+        title={prefs.soundEnabled ? 'Sesi kapat' : 'Sesi aç'}
+        aria-label={prefs.soundEnabled ? 'Sesi kapat' : 'Sesi aç'}
+        className="p-2 rounded-xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)] transition-colors hidden sm:block"
+      >
+        {prefs.soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+      </button>
+
+      {/* Tema toggle — dark/light/system döngüsü */}
+      <button
+        onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
+        title={effectiveTheme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
+        aria-label="Tema değiştir"
+        className="p-2 rounded-xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)] transition-colors"
+      >
+        {effectiveTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
+
       {/* Notifications */}
       <div className="relative" ref={notifRef}>
         <button
@@ -215,13 +238,21 @@ export const TopBar: React.FC<TopBarProps> = ({
         )}
       </div>
 
-      {/* User avatar */}
+      {/* User avatar — yüklenmişse fotoğraf, yoksa baş harfler */}
       <div className="flex items-center gap-2 pl-2 border-l border-[var(--color-border)]">
-        <div className="w-8 h-8 rounded-xl bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 flex items-center justify-center">
-          <span className="text-[var(--color-accent)] font-display font-bold text-xs">
-            {user ? getInitials(user.fullName) : 'U'}
-          </span>
-        </div>
+        {user?.avatarUrl ? (
+          <img
+            src={`${CONFIG.API_BASE}${user.avatarUrl}`}
+            alt={user.fullName}
+            className="w-8 h-8 rounded-xl object-cover border border-[var(--color-accent)]/30"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-xl bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 flex items-center justify-center">
+            <span className="text-[var(--color-accent)] font-display font-bold text-xs">
+              {user ? getInitials(user.fullName) : 'U'}
+            </span>
+          </div>
+        )}
         <div className="hidden sm:block">
           <p className="text-xs font-semibold text-[var(--color-text)] font-body leading-tight max-w-[100px] truncate">
             {user?.fullName}

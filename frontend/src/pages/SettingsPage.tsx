@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react'
-import { Save, Building2, Phone, FileText, Globe, Receipt, Printer, Download, UserCircle } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Save, Building2, Phone, FileText, Globe, Receipt, Printer, Download, UserCircle, Camera, Trash2, Sun, Moon, Monitor, Volume2, VolumeX, Keyboard } from 'lucide-react'
 import { Card } from '@/components/ui/common'
 import { Button } from '@/components/ui/Button'
 import { settingsApi } from '@/api/settings'
 import { authApi } from '@/api/auth'
-import { setActiveCurrency } from '@/utils/format'
+import { setActiveCurrency, getInitials } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
 import client from '@/api/client'
+import { CONFIG } from '@/config'
 import toast from 'react-hot-toast'
 
 interface SettingsData {
@@ -251,6 +253,9 @@ export const SettingsPage: React.FC = () => {
         </p>
       </Card>
 
+      {/* Profil Fotoğrafı + Kişisel Tercihler */}
+      <ProfileSettingsCard />
+
       {/* Restaurant Info */}
       <Card>
         <h2 className="text-sm font-semibold font-display text-[var(--color-text)] mb-4 flex items-center gap-2">
@@ -408,5 +413,162 @@ export const SettingsPage: React.FC = () => {
           (sağ üst), profil için ayrı "Profili Kaydet" (Hesabım kartında). */}
       <div className="pb-4" />
     </div>
+  )
+}
+
+// ─── Profil Fotoğrafı + Kişisel Tercihler Kartı ─────────────────────────────
+// Kullanıcı kendi avatarını yükler ve tema/ses/kısayol tercihlerini ayarlar.
+const ProfileSettingsCard: React.FC = () => {
+  const { user, setUser } = useAuthStore()
+  const { prefs, setTheme, toggleSound, toggleShortcuts } = useUserPreferences()
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const avatarFullUrl = user?.avatarUrl ? `${CONFIG.API_BASE}${user.avatarUrl}` : null
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Dosya 2 MB\'tan büyük olamaz')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const { data } = await authApi.uploadAvatar(file)
+      if (user && data.data) setUser({ ...user, avatarUrl: data.data.url })
+      toast.success('Profil fotoğrafı güncellendi')
+    } catch {
+      toast.error('Yüklenemedi')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const handleDelete = async () => {
+    try {
+      await authApi.deleteAvatar()
+      if (user) setUser({ ...user, avatarUrl: null })
+      toast.success('Profil fotoğrafı kaldırıldı')
+    } catch {
+      toast.error('Silinemedi')
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="text-sm font-semibold font-display text-[var(--color-text)] flex items-center gap-2 mb-4">
+        <UserCircle size={16} className="text-[var(--color-accent)]" /> Profil & Kişisel Tercihler
+      </h2>
+
+      {/* Avatar */}
+      <div className="flex items-center gap-4 pb-4 mb-4 border-b border-[var(--color-border)]">
+        <div className="relative">
+          {avatarFullUrl ? (
+            <img
+              src={avatarFullUrl}
+              alt="Profil"
+              className="w-20 h-20 rounded-2xl object-cover border-2 border-[var(--color-accent)]/30"
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-2xl bg-[var(--color-accent)]/20 border-2 border-[var(--color-accent)]/30 flex items-center justify-center">
+              <span className="text-[var(--color-accent)] font-display font-bold text-2xl">
+                {user ? getInitials(user.fullName) : 'U'}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="flex-1">
+          <p className="text-xs text-[var(--color-text-muted)] font-body mb-2">
+            Profil fotoğrafı — JPG/PNG/WebP, max 2 MB
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="px-3 py-1.5 rounded-xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-xs font-semibold font-body hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <Camera size={12} />
+              {uploading ? 'Yükleniyor...' : (avatarFullUrl ? 'Değiştir' : 'Yükle')}
+            </button>
+            {avatarFullUrl && (
+              <button
+                onClick={handleDelete}
+                className="px-3 py-1.5 rounded-xl bg-red-500/10 text-red-400 text-xs font-semibold font-body hover:bg-red-500/20 flex items-center gap-1.5"
+              >
+                <Trash2 size={12} /> Kaldır
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Tema */}
+      <div className="pb-4 mb-4 border-b border-[var(--color-border)]">
+        <label className="text-xs font-medium text-[var(--color-text-muted)] font-body block mb-2">Tema</label>
+        <div className="flex gap-2">
+          {([
+            { value: 'system', label: 'Sistem', icon: <Monitor size={14} /> },
+            { value: 'light',  label: 'Aydınlık', icon: <Sun size={14} /> },
+            { value: 'dark',   label: 'Karanlık', icon: <Moon size={14} /> },
+          ] as const).map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setTheme(opt.value)}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold font-body transition-colors ${
+                prefs.theme === opt.value
+                  ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/40'
+                  : 'bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] border border-[var(--color-border)]'
+              }`}
+            >
+              {opt.icon}
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Ses + Kısayollar toggle */}
+      <div className="space-y-2">
+        <button
+          onClick={toggleSound}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-[var(--color-surface2)] hover:bg-[var(--color-border)] transition-colors"
+        >
+          <span className="flex items-center gap-2 text-sm font-body text-[var(--color-text)]">
+            {prefs.soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+            Sesli Bildirimler
+          </span>
+          <span className={`w-10 h-5 rounded-full relative transition-colors ${prefs.soundEnabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'}`}>
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.soundEnabled ? 'left-5' : 'left-0.5'}`} />
+          </span>
+        </button>
+
+        <button
+          onClick={toggleShortcuts}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-[var(--color-surface2)] hover:bg-[var(--color-border)] transition-colors"
+        >
+          <span className="flex items-center gap-2 text-sm font-body text-[var(--color-text)]">
+            <Keyboard size={14} />
+            Klavye Kısayolları
+          </span>
+          <span className={`w-10 h-5 rounded-full relative transition-colors ${prefs.shortcutsEnabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'}`}>
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.shortcutsEnabled ? 'left-5' : 'left-0.5'}`} />
+          </span>
+        </button>
+        <p className="text-[10px] text-[var(--color-text-muted)]/70 font-body px-1">
+          Ctrl + / ile kısayollar rehberini açabilirsin
+        </p>
+      </div>
+    </Card>
   )
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutGrid, ShoppingBag, CalendarDays, Clock, BarChart3,
-  UtensilsCrossed, Users, Palette, Settings, LogOut, Lock,
+  UtensilsCrossed, Users, Palette, Settings, LogOut, Lock, Calculator,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/utils/format'
@@ -145,6 +145,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Kilit + Logout */}
       <div className="p-2 border-t border-[var(--color-border)] space-y-1">
+        {/* Hesap Makinesi — kasiyer için. Window event ile AppLayout'a sinyal gönder. */}
+        {!logoutConfirm && (
+          <button
+            onClick={() => window.dispatchEvent(new Event('open-calculator'))}
+            title={collapsed ? 'Hesap Makinesi' : undefined}
+            className={cn(
+              'w-full flex items-center rounded-xl transition-all duration-200',
+              'text-sm font-medium font-body text-[var(--color-text-muted)]',
+              'hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]',
+              collapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
+            )}
+          >
+            <Calculator size={20} className="flex-shrink-0" />
+            {!collapsed && <span>Hesap Makinesi</span>}
+          </button>
+        )}
+
         {/* Kilitle — paylaşımlı bilgisayar için. Tek dokunuş, şifre ister. */}
         {onLock && !logoutConfirm && (
           <button onClick={onLock} title={collapsed ? 'Ekranı Kilitle' : undefined}

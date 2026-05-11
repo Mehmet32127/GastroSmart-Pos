@@ -11,6 +11,10 @@ export const tablesApi = {
   updateStatus: (id: string, status: TableStatus) =>
     client.patch<ApiResponse<Table>>(`/tables/${id}/status`, { status }),
 
+  // Masa sticky not — garson masaya özel not bırakır
+  updateNote: (id: string, note: string) =>
+    client.patch<ApiResponse<Table>>(`/tables/${id}/note`, { note }),
+
   create: (data: Partial<Table>) =>
     client.post<ApiResponse<Table>>('/tables', data),
 

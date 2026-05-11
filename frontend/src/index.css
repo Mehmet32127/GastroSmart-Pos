@@ -4,8 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── CSS Variables (overridden by theme) ──────────────────────────────────── */
-:root {
+/* ─── CSS Variables (Default = Dark Theme) ──────────────────────────────────── */
+:root,
+[data-theme="dark"] {
   --color-bg: #0f1117;
   --color-surface: #161923;
   --color-surface2: #1e2235;
@@ -16,6 +17,18 @@
   --color-accent-text: #0f1117;
   --border-radius: 12px;
   --font-scale: 1;
+}
+
+/* ─── Light Theme — Kullanıcı tercihi olarak açılırsa ──────────────────────── */
+[data-theme="light"] {
+  --color-bg: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-surface2: #f1f3f7;
+  --color-border: #e1e4ea;
+  --color-text: #1a1d29;
+  --color-text-muted: #6b7280;
+  --color-accent: #f59e0b;
+  --color-accent-text: #ffffff;
 }
 
 /* ─── Base ──────────────────────────────────────────────────────────────────── */

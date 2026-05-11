@@ -4,11 +4,15 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { LockScreen } from './LockScreen'
+import { ShortcutsModal } from '@/components/ShortcutsModal'
+import { CalculatorModal } from '@/components/CalculatorModal'
 import { useAuthStore } from '@/store/authStore'
 import { useSocket } from '@/hooks/useSocket'
 import { useOfflineQueue } from '@/hooks/useOfflineQueue'
 import { useIdleLogout } from '@/hooks/useIdleLogout'
 import { useLock } from '@/hooks/useLock'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useSettingsStore } from '@/store/settingsStore'
 import { setActiveCurrency } from '@/utils/format'
 import { authApi } from '@/api/auth'
@@ -50,6 +54,17 @@ export const AppLayout: React.FC = () => {
 
   // 5 dakika hareketsizlikte ekran kilidi (logout değil — şifre ile açılır)
   const { locked, lock, unlock } = useLock()
+
+  // Kişisel tercihler hook'u — tema + ses + kısayollar
+  useUserPreferences()
+
+  // Klavye kısayolu modal'ı + hesap makinesi modal'ı
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [calculatorOpen, setCalculatorOpen] = useState(false)
+  useKeyboardShortcuts({
+    onShowShortcuts: () => setShortcutsOpen((o) => !o),
+    onLock: lock,
+  })
 
   // Tablet (768-1023): sidebar default collapsed (icon-only) → içerik için daha çok yer
   // Desktop (>=1024): sidebar default expanded
@@ -168,6 +183,26 @@ export const AppLayout: React.FC = () => {
 
       {/* Lock screen overlay — paylaşımlı bilgisayar/tablet için */}
       {locked && <LockScreen onUnlock={unlock} />}
+
+      {/* Klavye kısayolları rehberi (Ctrl+/ ile açılır) */}
+      <ShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+      {/* Hesap makinesi (sidebar'dan veya sayfadan açılır) */}
+      <CalculatorModal isOpen={calculatorOpen} onClose={() => setCalculatorOpen(false)} />
+
+      {/* Calculator'ı global window event ile aç — Sidebar bunu emit eder */}
+      <CalculatorTrigger onOpen={() => setCalculatorOpen(true)} />
     </div>
   )
+}
+
+// Sidebar'dan tetiklemek için event-based köprü.
+// Sidebar dispatchEvent('open-calculator') yapar, AppLayout dinler.
+const CalculatorTrigger: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
+  useEffect(() => {
+    const handler = () => onOpen()
+    window.addEventListener('open-calculator', handler)
+    return () => window.removeEventListener('open-calculator', handler)
+  }, [onOpen])
+  return null
 }

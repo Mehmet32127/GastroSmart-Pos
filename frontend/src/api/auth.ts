@@ -23,4 +23,23 @@ export const authApi = {
   // Lock screen için: mevcut session şifresini doğrula (token üretmez)
   verifyPassword: (password: string) =>
     client.post<ApiResponse>('/auth/verify-password', { password }),
+
+  // Kişisel tercihler (tema, ses, kısayollar)
+  updatePreferences: (prefs: Partial<{
+    theme: 'dark' | 'light' | 'system'
+    accentColor: string | null
+    soundEnabled: boolean
+    shortcutsEnabled: boolean
+  }>) => client.patch<ApiResponse>('/auth/preferences', prefs),
+
+  // Avatar upload
+  uploadAvatar: (file: File) => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    return client.post<ApiResponse<{ url: string }>>('/auth/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  deleteAvatar: () => client.delete<ApiResponse>('/auth/avatar'),
 }

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useTableStore } from '@/store/tableStore'
 import { useNotificationStore } from '@/store/notificationStore'
 import { useThemeStore } from '@/store/themeStore'
+import { useSound } from './useSound'
 import type { Table, Order, Notification, Theme } from '@/types'
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'error'
@@ -16,6 +17,7 @@ export function useSocket() {
   const { updateTable, markNewItem } = useTableStore()
   const { addNotification } = useNotificationStore()
   const { setTheme } = useThemeStore()
+  const { play } = useSound()
 
   // Render cold start için sabırlı ol — birkaç başarısız denemeden sonra "Hata" göster
   const hasConnectedOnceRef = useRef(false)
@@ -90,6 +92,7 @@ export function useSocket() {
     // Siparişe yeni ürün eklendi
     socket.on('order:item:added', (data: { tableId: string; order: Order }) => {
       markNewItem(data.tableId)
+      play('notification')  // bip — gürültülü mutfakta görsel yetmez
       addNotification({
         type:    'order',
         title:   'Yeni Sipariş Kalemi',
@@ -100,6 +103,7 @@ export function useSocket() {
 
     // Yeni sipariş açıldı
     socket.on('order:created', (order: Order) => {
+      play('notification')
       addNotification({
         type:    'order',
         title:   'Sipariş Açıldı',

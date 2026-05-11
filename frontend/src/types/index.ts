@@ -13,6 +13,13 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   waiter:  'Garson',
 }
 
+export interface UserPreferences {
+  theme:            'dark' | 'light' | 'system'
+  accentColor:      string | null
+  soundEnabled:     boolean
+  shortcutsEnabled: boolean
+}
+
 export interface User {
   id: string
   username: string
@@ -23,6 +30,8 @@ export interface User {
   active: boolean
   createdAt: string
   tenantSlug?: string | null
+  preferences?: UserPreferences
+  avatarUrl?: string | null
 }
 
 export interface AuthTokens {
@@ -46,6 +55,7 @@ export interface Table {
   capacity: number
   status: TableStatus
   section?: string
+  note?: string
   posX?: number
   posY?: number
   currentOrderId?: string

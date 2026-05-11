@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Users, Clock, Receipt } from 'lucide-react'
+import { Users, Clock, Receipt, StickyNote } from 'lucide-react'
 import { cn, formatCurrency, formatRelative } from '@/utils/format'
 import type { Table } from '@/types'
 
@@ -89,6 +89,18 @@ export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-accent)] opacity-75" />
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--color-accent)]" />
         </span>
+      )}
+
+      {/* Sticky note ikonu — masaya not düşülmüşse köşede sarı küçük badge.
+          Tooltip ile içerik (hover'da) */}
+      {table.note && cardSize !== 'sm' && (
+        <div
+          title={table.note}
+          className="absolute top-2 left-2 z-10 px-1.5 py-0.5 bg-yellow-400/20 border border-yellow-400/40 rounded-md flex items-center gap-1 max-w-[60%]"
+        >
+          <StickyNote size={10} className="text-yellow-400 flex-shrink-0" />
+          <span className="text-[9px] font-body text-yellow-200 truncate">{table.note}</span>
+        </div>
       )}
 
       <div className="relative z-10 flex flex-col h-full gap-1.5">

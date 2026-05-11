@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Plus, Minus, Trash2, MessageSquare, X, ChevronLeft, ShoppingBag, Ban } from 'lucide-react'
+import { Search, Plus, Minus, Trash2, MessageSquare, X, ChevronLeft, ShoppingBag, Ban, StickyNote, Check } from 'lucide-react'
 import { cn, formatCurrency } from '@/utils/format'
 import { Input } from '@/components/ui/Input'
 import { useOrderStore } from '@/store/orderStore'
+import { useTableStore } from '@/store/tableStore'
 import { menuApi } from '@/api/menu'
 import { ordersApi } from '@/api/orders'
+import { tablesApi } from '@/api/tables'
 import type { Table, MenuItem, Category } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -28,6 +30,25 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
   const guestCount = 1  // Varsayılan 1; sipariş açıldıktan sonra güncellenebilir
+
+  // Masa notu — sticky note (alerji, doğum günü, vs)
+  const updateTableLocal = useTableStore((s) => s.updateTable)
+  const [tableNote, setTableNote] = useState(table.note || '')
+  const [savingNote, setSavingNote] = useState(false)
+
+  const saveTableNote = async () => {
+    if (tableNote === (table.note || '')) return
+    setSavingNote(true)
+    try {
+      const { data } = await tablesApi.updateNote(table.id, tableNote.trim())
+      if (data.data) updateTableLocal(data.data)
+      toast.success(tableNote.trim() ? 'Not kaydedildi' : 'Not silindi')
+    } catch {
+      toast.error('Not kaydedilemedi')
+    } finally {
+      setSavingNote(false)
+    }
+  }
 
   const { subtotal, taxTotal, total } = calculateTotals()
 
@@ -187,6 +208,29 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
                   Ürün Ekle
                 </button>
               </div>
+            </div>
+
+            {/* Masa notu (sticky) — alerjisi, doğum günü, sessiz köşe vb */}
+            <div className="px-6 py-2 border-b border-[var(--color-border)] bg-yellow-400/5 flex items-center gap-2">
+              <StickyNote size={14} className="text-yellow-400 flex-shrink-0" />
+              <input
+                value={tableNote}
+                onChange={(e) => setTableNote(e.target.value.slice(0, 200))}
+                onBlur={saveTableNote}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                placeholder="Masaya not bırak (ör: Doğum günü, çocuklu aile, alerjisi var)..."
+                className="flex-1 bg-transparent text-sm font-body text-[var(--color-text)] placeholder-[var(--color-text-muted)]/60 focus:outline-none"
+                disabled={savingNote}
+              />
+              {tableNote !== (table.note || '') && (
+                <button
+                  onClick={saveTableNote}
+                  disabled={savingNote}
+                  className="px-2 py-1 rounded-lg bg-yellow-400/20 text-yellow-300 text-xs font-semibold hover:bg-yellow-400/30 disabled:opacity-50 flex items-center gap-1"
+                >
+                  <Check size={12} /> Kaydet
+                </button>
+              )}
             </div>
 
             {/* Sipariş listesi */}
