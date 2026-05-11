@@ -207,9 +207,9 @@ export const MenuPage: React.FC = () => {
   const catOptions = [{ value: '', label: 'Kategori seçin' }, ...categories.map(c => ({ value: c.id, label: c.name }))]
 
   return (
-    <div className="flex h-full flex-col md:flex-row">
-      {/* Sidebar: categories — mobilde gizli, üstte dropdown gösteriliyor */}
-      <div className="hidden md:flex w-52 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div className="flex h-full flex-col lg:flex-row">
+      {/* Sidebar: categories — sadece desktop (lg+). Tablet ve mobilde dropdown kullanılır. */}
+      <div className="hidden lg:flex w-52 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="p-3 border-b border-[var(--color-border)]">
           <Button fullWidth size="sm" icon={<Plus size={14} />} onClick={() => setCatModalOpen(true)}>
             Kategori Ekle
@@ -275,11 +275,11 @@ export const MenuPage: React.FC = () => {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex flex-wrap items-center gap-2 px-3 py-2 md:gap-3 md:px-4 md:py-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-          {/* Mobil kategori seçici — md+ ekranlarda gizli, sol sidebar görünür */}
+          {/* Kategori seçici — lg altı (mobil+tablet). lg+'ta sol sidebar var. */}
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as string)}
-            className="md:hidden bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-body text-[var(--color-text)] focus:outline-none"
+            className="lg:hidden bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-body text-[var(--color-text)] focus:outline-none"
           >
             <option value="all">📋 Tümü ({items.length})</option>
             {categories.map((cat) => {

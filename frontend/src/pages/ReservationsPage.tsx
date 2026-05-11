@@ -129,9 +129,9 @@ export const ReservationsPage: React.FC = () => {
   const firstDayOfWeek = startOfMonth(calendarMonth).getDay()
 
   return (
-    <div className="flex h-full flex-col md:flex-row">
-      {/* LEFT: Mini Calendar — mobilde gizli, üstteki date input'la seçim yapılır */}
-      <div className="hidden md:flex w-72 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div className="flex h-full flex-col lg:flex-row">
+      {/* LEFT: Mini Calendar — sadece desktop (lg+). Tablet ve mobilde date input header'da. */}
+      <div className="hidden lg:flex w-72 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="p-4 border-b border-[var(--color-border)]">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold font-display text-[var(--color-text)]">
@@ -227,7 +227,7 @@ export const ReservationsPage: React.FC = () => {
               const [y, m, d] = e.target.value.split('-').map(Number)
               if (y && m && d) setSelectedDate(new Date(y, m - 1, d))
             }}
-            className="md:hidden bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-body text-[var(--color-text)] focus:outline-none"
+            className="lg:hidden bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-body text-[var(--color-text)] focus:outline-none"
           />
           {/* Kod ile arama — müşteri restorana gelince personel kodu girer */}
           <div className="relative">

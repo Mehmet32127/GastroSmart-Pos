@@ -45,8 +45,35 @@ export const AppLayout: React.FC = () => {
   // 30 dakika hareketsizlikte otomatik çıkış (5 dk önce uyarı)
   useIdleLogout(30, 5)
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // Tablet (768-1023): sidebar default collapsed (icon-only) → içerik için daha çok yer
+  // Desktop (>=1024): sidebar default expanded
+  // Kullanıcı manuel ayarladıysa localStorage'da tut, sonraki açılışta uygula
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    const stored = localStorage.getItem('gastro_sidebar_collapsed')
+    if (stored !== null) return stored === 'true'
+    // İlk açılışta tablet ise collapsed
+    return window.innerWidth < 1024
+  })
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Manual toggle'da localStorage'a kaydet — bir sonraki açılışta hatırlansın
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev
+      try { localStorage.setItem('gastro_sidebar_collapsed', String(next)) } catch { /* private mode */ }
+      return next
+    })
+  }
+
+  // Pencere boyutu değişimi: kullanıcı manuel set etmemişse ekrana göre uyarla
+  useEffect(() => {
+    const stored = localStorage.getItem('gastro_sidebar_collapsed')
+    if (stored !== null) return  // kullanıcı seçimi yapmış, dokunma
+    const handler = () => setSidebarCollapsed(window.innerWidth < 1024)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
   const location = useLocation()
   const { restaurantName, currency, load: loadSettings } = useSettingsStore()
 
@@ -80,7 +107,7 @@ export const AppLayout: React.FC = () => {
       <div className="hidden md:flex">
         <Sidebar
           collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onToggle={toggleSidebar}
           restaurantName={restaurantName}
         />
       </div>
