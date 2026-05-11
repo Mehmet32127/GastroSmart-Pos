@@ -19,4 +19,8 @@ export const authApi = {
 
   updateProfile: (data: { username?: string; fullName?: string; email?: string; phone?: string }) =>
     client.patch<ApiResponse<User & { requireRelogin?: boolean }>>('/auth/profile', data),
+
+  // Lock screen için: mevcut session şifresini doğrula (token üretmez)
+  verifyPassword: (password: string) =>
+    client.post<ApiResponse>('/auth/verify-password', { password }),
 }

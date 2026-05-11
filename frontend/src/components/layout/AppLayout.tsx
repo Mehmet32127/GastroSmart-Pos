@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { LockScreen } from './LockScreen'
 import { useAuthStore } from '@/store/authStore'
 import { useSocket } from '@/hooks/useSocket'
 import { useOfflineQueue } from '@/hooks/useOfflineQueue'
 import { useIdleLogout } from '@/hooks/useIdleLogout'
+import { useLock } from '@/hooks/useLock'
 import { useSettingsStore } from '@/store/settingsStore'
 import { setActiveCurrency } from '@/utils/format'
 import { authApi } from '@/api/auth'
@@ -44,6 +46,9 @@ export const AppLayout: React.FC = () => {
 
   // 30 dakika hareketsizlikte otomatik çıkış (5 dk önce uyarı)
   useIdleLogout(30, 5)
+
+  // 5 dakika hareketsizlikte ekran kilidi (logout değil — şifre ile açılır)
+  const { locked, lock, unlock } = useLock()
 
   // Tablet (768-1023): sidebar default collapsed (icon-only) → içerik için daha çok yer
   // Desktop (>=1024): sidebar default expanded
@@ -109,6 +114,7 @@ export const AppLayout: React.FC = () => {
           collapsed={sidebarCollapsed}
           onToggle={toggleSidebar}
           restaurantName={restaurantName}
+          onLock={lock}
         />
       </div>
 
@@ -130,6 +136,7 @@ export const AppLayout: React.FC = () => {
           collapsed={false}
           onToggle={() => setMobileOpen(false)}
           restaurantName={restaurantName}
+          onLock={() => { setMobileOpen(false); lock() }}
         />
       </div>
 
@@ -143,6 +150,9 @@ export const AppLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Lock screen overlay — paylaşımlı bilgisayar/tablet için */}
+      {locked && <LockScreen onUnlock={unlock} />}
     </div>
   )
 }

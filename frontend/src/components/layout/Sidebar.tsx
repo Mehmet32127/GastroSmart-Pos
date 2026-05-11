@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutGrid, ShoppingBag, CalendarDays, Clock, BarChart3,
-  UtensilsCrossed, Users, Palette, Settings, LogOut,
+  UtensilsCrossed, Users, Palette, Settings, LogOut, Lock,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/utils/format'
@@ -35,11 +35,12 @@ interface SidebarProps {
   pendingOrders?: number
   pendingReservations?: number
   restaurantName?: string
+  onLock?: () => void
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   collapsed, onToggle, pendingOrders = 0, pendingReservations = 0,
-  restaurantName = 'GastroSmart',
+  restaurantName = 'GastroSmart', onLock,
 }) => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -136,8 +137,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </nav>
 
-      {/* Logout */}
-      <div className="p-2 border-t border-[var(--color-border)]">
+      {/* Kilit + Logout */}
+      <div className="p-2 border-t border-[var(--color-border)] space-y-1">
+        {/* Kilitle — paylaşımlı bilgisayar için. Tek dokunuş, şifre ister. */}
+        {onLock && !logoutConfirm && (
+          <button onClick={onLock} title={collapsed ? 'Ekranı Kilitle' : undefined}
+            className={cn(
+              'w-full flex items-center rounded-xl transition-all duration-200',
+              'text-sm font-medium font-body text-[var(--color-text-muted)]',
+              'hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]',
+              collapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
+            )}>
+            <Lock size={20} className="flex-shrink-0" />
+            {!collapsed && <span>Ekranı Kilitle</span>}
+          </button>
+        )}
+
         {!logoutConfirm ? (
           <button onClick={() => setLogoutConfirm(true)} title={collapsed ? 'Çıkış Yap' : undefined}
             className={cn(
