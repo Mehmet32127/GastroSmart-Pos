@@ -32,13 +32,13 @@ export const authApi = {
     shortcutsEnabled: boolean
   }>) => client.patch<ApiResponse>('/auth/preferences', prefs),
 
-  // Avatar upload
+  // Avatar upload — Content-Type ELLE SET EDİLMEZ.
+  // Axios FormData görünce 'multipart/form-data; boundary=...' set eder.
+  // Manuel set boundary'i kırar, backend body'i parse edemez.
   uploadAvatar: (file: File) => {
     const formData = new FormData()
     formData.append('avatar', file)
-    return client.post<ApiResponse<{ url: string }>>('/auth/avatar', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    return client.post<ApiResponse<{ url: string }>>('/auth/avatar', formData)
   },
 
   deleteAvatar: () => client.delete<ApiResponse>('/auth/avatar'),

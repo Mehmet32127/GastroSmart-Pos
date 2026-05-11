@@ -55,7 +55,7 @@ export const SettingsPage: React.FC = () => {
     email:    user?.email    ?? '',
     phone:    user?.phone    ?? '',
   })
-  const [profileSaving, setProfileSaving] = useState(false)
+  // profileSaving + handleSaveProfile kaldırıldı — artık unified handleSaveAll kullanılıyor.
 
   useEffect(() => {
     if (user) {
@@ -67,37 +67,6 @@ export const SettingsPage: React.FC = () => {
       })
     }
   }, [user])
-
-  const handleSaveProfile = async () => {
-    if (!profile.fullName.trim() || !profile.username.trim()) {
-      toast.error('Ad ve kullanıcı adı boş olamaz')
-      return
-    }
-    setProfileSaving(true)
-    try {
-      const res = await authApi.updateProfile({
-        username: profile.username.trim(),
-        fullName: profile.fullName.trim(),
-        email:    profile.email.trim() || undefined,
-        phone:    profile.phone.trim() || undefined,
-      })
-      const updated = res.data.data
-      toast.success(updated?.requireRelogin
-        ? 'Kullanıcı adı değişti — tekrar giriş yapın'
-        : 'Profil güncellendi'
-      )
-      if (updated?.requireRelogin) {
-        // Username değiştiği için tüm token'lar iptal edildi → logout
-        setTimeout(() => logout(), 1500)
-      } else if (updated) {
-        useAuthStore.getState().setUser(updated)
-      }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Profil güncellenemedi')
-    } finally {
-      setProfileSaving(false)
-    }
-  }
 
   const handleDownloadBackup = async () => {
     setDownloading(true)
@@ -145,13 +114,34 @@ export const SettingsPage: React.FC = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  const handleSave = async () => {
+  // Unified Save — hem profil hem restoran ayarları tek seferde kaydedilir.
+  // Sayfanın altında tek büyük "Tüm Değişiklikleri Kaydet" butonuna bağlı.
+  const handleSaveAll = async () => {
     if (!data.restaurantName.trim()) {
       toast.error('Restoran adı boş olamaz')
       return
     }
+    if (!profile.fullName.trim() || !profile.username.trim()) {
+      toast.error('Ad ve kullanıcı adı boş olamaz')
+      return
+    }
+
     setSaving(true)
+    let profileUpdated = null as any
+    let requireRelogin = false
+
     try {
+      // 1) Profil güncelle (öncelikli — username değişimi token revoke eder)
+      const profileRes = await authApi.updateProfile({
+        username: profile.username.trim(),
+        fullName: profile.fullName.trim(),
+        email:    profile.email.trim() || undefined,
+        phone:    profile.phone.trim() || undefined,
+      })
+      profileUpdated = profileRes.data.data
+      requireRelogin = !!profileUpdated?.requireRelogin
+
+      // 2) Restoran ayarları
       await settingsApi.update({
         restaurantName: data.restaurantName.trim(),
         address:        data.address.trim(),
@@ -160,14 +150,24 @@ export const SettingsPage: React.FC = () => {
         receiptFooter:  data.receiptFooter.trim(),
         currency:       data.currency,
         timezone:       data.timezone,
-        paperWidth,     // DB'ye de kaydedilir — tüm cihazlarda tutarlı
+        paperWidth,
       })
       localStorage.setItem('gastro_paper_width', paperWidth)
       setActiveCurrency(data.currency)
-      toast.success('Ayarlar kaydedildi')
       window.dispatchEvent(new CustomEvent('settings:updated'))
-    } catch {
-      toast.error('Ayarlar kaydedilemedi')
+
+      if (profileUpdated && !requireRelogin) {
+        useAuthStore.getState().setUser(profileUpdated)
+      }
+
+      toast.success(requireRelogin
+        ? 'Kaydedildi — kullanıcı adı değişti, tekrar giriş yapın'
+        : 'Tüm değişiklikler kaydedildi'
+      )
+
+      if (requireRelogin) setTimeout(() => logout(), 1500)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Kaydetme başarısız')
     } finally {
       setSaving(false)
     }
@@ -189,27 +189,17 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="p-5 max-w-3xl mx-auto space-y-5 overflow-y-auto h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold font-display text-[var(--color-text)]">Restoran Ayarları</h1>
-          <p className="text-sm text-[var(--color-text-muted)] font-body">Genel bilgiler ve sistem ayarları</p>
-        </div>
-        <Button icon={<Save size={16} />} loading={saving} onClick={handleSave}>
-          Kaydet
-        </Button>
+      {/* Header — tek kaydet butonu sayfanın altında */}
+      <div>
+        <h1 className="text-xl font-bold font-display text-[var(--color-text)]">Restoran Ayarları</h1>
+        <p className="text-sm text-[var(--color-text-muted)] font-body">Genel bilgiler ve sistem ayarları</p>
       </div>
 
       {/* Hesabım — kullanıcının kendi profili */}
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold font-display text-[var(--color-text)] flex items-center gap-2">
-            <UserCircle size={16} className="text-[var(--color-accent)]" /> Hesabım
-          </h2>
-          <Button size="sm" loading={profileSaving} onClick={handleSaveProfile}>
-            Profili Kaydet
-          </Button>
-        </div>
+        <h2 className="text-sm font-semibold font-display text-[var(--color-text)] flex items-center gap-2 mb-4">
+          <UserCircle size={16} className="text-[var(--color-accent)]" /> Hesabım
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">Ad Soyad *</label>
@@ -409,9 +399,27 @@ export const SettingsPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Alttaki ekstra Kaydet butonu kaldırıldı — sayfa için tek "Kaydet"
-          (sağ üst), profil için ayrı "Profili Kaydet" (Hesabım kartında). */}
-      <div className="pb-4" />
+      {/* Tek büyük Kaydet butonu — sayfa altında.
+          Profil + restoran ayarları tek seferde kaydedilir (handleSaveAll). */}
+      <div className="pt-4 pb-8 sticky bottom-0 bg-gradient-to-t from-[var(--color-bg)] via-[var(--color-bg)]/95 to-transparent">
+        <button
+          onClick={handleSaveAll}
+          disabled={saving}
+          className="w-full h-14 rounded-2xl bg-[var(--color-accent)] text-[var(--color-accent-text)] font-display font-bold text-base hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-card-hover"
+        >
+          {saving ? (
+            <>
+              <div className="animate-spin w-5 h-5 border-2 border-current border-t-transparent rounded-full" />
+              Kaydediliyor...
+            </>
+          ) : (
+            <>
+              <Save size={20} />
+              Tüm Değişiklikleri Kaydet
+            </>
+          )}
+        </button>
+      </div>
     </div>
   )
 }
