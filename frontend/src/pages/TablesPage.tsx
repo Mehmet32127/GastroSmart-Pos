@@ -98,7 +98,7 @@ export const TablesPage: React.FC = () => {
 
   useEffect(() => { loadTables() }, [loadTables])
   useEffect(() => {
-    const interval = setInterval(loadTables, 30000)
+    const interval = setInterval(loadTables, 60000)
     return () => clearInterval(interval)
   }, [loadTables])
   useEffect(() => {

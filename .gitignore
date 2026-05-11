@@ -68,3 +68,6 @@ TEKNIK_RAPOR.md
 CLAUDE.md
 /package.json
 /package-lock.json
+
+# Bitirme savunma notları — repo'ya commit edilmesin
+docs-private/

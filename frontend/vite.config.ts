@@ -30,18 +30,16 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            urlPattern: ({ request, url }: { request: Request; url: URL }) =>
-              request.method === 'GET' && /\/api\//.test(url.pathname),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: { maxEntries: 100, maxAgeSeconds: 86400 },
-              networkTimeoutSeconds: 5
-            }
-          }
-        ]
+        // GÜVENLİK: API GET'leri ARTIK CACHE'LENMİYOR.
+        // Eski runtimeCaching NetworkFirst pattern'i multi-tenant'ta sızıntı yapıyordu:
+        //   - Cache key sadece URL, Authorization header dikkate alınmıyor
+        //   - Aynı cihazda farklı tenant kullanıcısı login olursa eskisinin verisini görebilir
+        //   - Network failure'da 24 saat eski "occupied/available" masa durumu döner
+        //   - 429 hataları bile cache'lenebilir (kullanıcı yapay olarak rate limit yer)
+        // API çağrıları her zaman canlı sunucuya gitmeli. App shell (HTML/JS/CSS) cache'i precache ile zaten var.
+        runtimeCaching: [],
+        // Eski "api-cache" cache store'unu boşalt (eski cihazlarda hâlâ veri olabilir)
+        cleanupOutdatedCaches: true,
       },
       devOptions: { enabled: false }
     })
