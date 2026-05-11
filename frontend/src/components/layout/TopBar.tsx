@@ -40,7 +40,11 @@ export const TopBar: React.FC<TopBarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Günlük ciro widget — sadece müdür/kasiyer/sahibi (garson görmez)
+  const canSeeCiro = user && (user.role === 'admin' || user.role === 'manager' || user.role === 'cashier')
+
   useEffect(() => {
+    if (!canSeeCiro) return
     reportsApi.getDailyCiro()
       .then(({ data }) => {
         if (data.data) setDailyCiro(data.data)
@@ -56,7 +60,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     }, 60000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [canSeeCiro])
 
   const statusConfig = {
     connected: { icon: <Wifi size={14} />, color: 'text-green-400', label: 'Bağlı' },
