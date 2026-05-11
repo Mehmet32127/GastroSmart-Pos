@@ -16,12 +16,18 @@ interface NavItem {
   roles?: string[]
 }
 
+// Rol bazlı navigasyon:
+//  - Masalar/Siparişler/Geçmiş: tüm roller (waiter/cashier operasyonel görür)
+//  - Rezervasyonlar: müdür+ (garson rezervasyon yönetmez ama görür — view-only)
+//  - Raporlar: müdür + kasiyer + admin (garson YOK)
+//  - Menü, Tema, Ayarlar: müdür + admin (operasyonel personel değiştirmez)
+//  - Kullanıcılar: sadece admin
 const NAV_ITEMS: NavItem[] = [
   { path: '/',             label: 'Masalar',       icon: <LayoutGrid size={20} /> },
   { path: '/orders',       label: 'Siparişler',    icon: <ShoppingBag size={20} /> },
   { path: '/reservations', label: 'Rezervasyonlar',icon: <CalendarDays size={20} /> },
   { path: '/history',      label: 'Geçmiş',        icon: <Clock size={20} /> },
-  { path: '/reports',      label: 'Raporlar',      icon: <BarChart3 size={20} />,      roles: ['admin', 'manager'] },
+  { path: '/reports',      label: 'Raporlar',      icon: <BarChart3 size={20} />,      roles: ['admin', 'manager', 'cashier'] },
 
   { path: '/menu',         label: 'Menü & Stok',   icon: <UtensilsCrossed size={20} />,roles: ['admin', 'manager'] },
   { path: '/users',        label: 'Kullanıcılar',  icon: <Users size={20} />,           roles: ['admin'] },

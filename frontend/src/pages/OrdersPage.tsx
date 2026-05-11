@@ -4,6 +4,7 @@ import { PaymentModal } from '@/components/orders/PaymentModal'
 import { Spinner, EmptyState } from '@/components/ui/common'
 import { ordersApi } from '@/api/orders'
 import { formatCurrency, cn } from '@/utils/format'
+import { useAuthStore } from '@/store/authStore'
 import type { Order } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -12,6 +13,8 @@ export const OrdersPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [paymentOrder, setPaymentOrder] = useState<Order | null>(null)
+  // Sadece kasiyer/sahibi ödeme alır — garson/müdür için karte tıklama bilgi ver
+  const canCloseOrder = useAuthStore((s) => s.hasRole(['admin', 'cashier']))
 
   const loadOrders = useCallback(async () => {
     try {
@@ -91,7 +94,13 @@ export const OrdersPage: React.FC = () => {
                 ).getTime() > 30 * 60 * 1000
 
                 return (
-                  <button key={order.id} onClick={() => setPaymentOrder(order)}
+                  <button key={order.id} onClick={() => {
+                    if (!canCloseOrder) {
+                      toast('Hesap kapatma yetkisi sadece Kasiyer ve Sahibinde', { icon: 'ℹ️' })
+                      return
+                    }
+                    setPaymentOrder(order)
+                  }}
                     className={cn(
                       'flex flex-col p-4 rounded-2xl border text-left transition-all duration-200',
                       'bg-[var(--color-surface)] hover:bg-[var(--color-surface2)] hover:-translate-y-0.5 active:scale-95',

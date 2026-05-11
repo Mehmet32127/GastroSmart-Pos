@@ -13,9 +13,10 @@ import type { User, UserRole } from '@/types'
 import toast from 'react-hot-toast'
 
 const ROLE_CONFIG: Record<UserRole, { label: string; badge: 'default' | 'success' | 'warning' | 'info'; desc: string }> = {
-  admin:   { label: 'Yönetici', badge: 'default', desc: 'Tüm yetkiler' },
-  manager: { label: 'Müdür',    badge: 'warning',  desc: 'Rapor, tema, menü, ödeme' },
-  waiter:  { label: 'Garson',   badge: 'success',  desc: 'Sipariş alma' },
+  admin:   { label: 'Sahibi',  badge: 'default', desc: 'Tüm yetkiler' },
+  manager: { label: 'Müdür',   badge: 'warning', desc: 'Raporlar, menü, ayarlar (sipariş açmaz)' },
+  cashier: { label: 'Kasiyer', badge: 'info',    desc: 'Sipariş aç/kapat, ödeme, masa transfer' },
+  waiter:  { label: 'Garson',  badge: 'success', desc: 'Sipariş açma + kalem ekleme' },
 }
 
 const userSchema = z.object({
@@ -24,7 +25,7 @@ const userSchema = z.object({
   // Email artık zorunlu — şifre sıfırlama için gerekli
   email: z.string().min(1, 'Email zorunlu').email('Geçersiz e-posta'),
   phone: z.string().optional(),
-  role: z.enum(['admin', 'manager', 'waiter']),
+  role: z.enum(['admin', 'manager', 'cashier', 'waiter']),
   password: z.string().min(8, 'En az 8 karakter').optional().or(z.literal('')),
 })
 
@@ -59,7 +60,7 @@ export const UsersPage: React.FC = () => {
   const openModal = (user?: User) => {
     setEditUser(user)
     if (user) {
-      reset({ username: user.username, fullName: user.fullName, email: user.email || '', phone: user.phone || '', role: user.role as 'admin' | 'manager' | 'waiter', password: '' })
+      reset({ username: user.username, fullName: user.fullName, email: user.email || '', phone: user.phone || '', role: user.role as 'admin' | 'manager' | 'cashier' | 'waiter', password: '' })
     } else {
       reset({ role: 'waiter' })
     }
@@ -115,8 +116,9 @@ export const UsersPage: React.FC = () => {
   }
 
   const roleOptions = [
-    { value: 'admin',   label: 'Yönetici' },
+    { value: 'admin',   label: 'Sahibi' },
     { value: 'manager', label: 'Müdür' },
+    { value: 'cashier', label: 'Kasiyer' },
     { value: 'waiter',  label: 'Garson' },
   ]
 

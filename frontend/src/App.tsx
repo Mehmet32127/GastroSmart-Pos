@@ -130,9 +130,9 @@ export const App: React.FC = () => {
           <Route path="/reservations" element={<ReservationsPage />} />
           <Route path="/history" element={<HistoryPage />} />
 
-          {/* Manager+ */}
+          {/* Raporlar: admin + müdür + kasiyer (garson hariç) */}
           <Route path="/reports" element={
-            <RoleGuard roles={['admin', 'manager']}>
+            <RoleGuard roles={['admin', 'manager', 'cashier']}>
               <ReportsPage />
             </RoleGuard>
           } />

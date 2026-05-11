@@ -1,5 +1,17 @@
 // ─── Auth ───────────────────────────────────────────────────────────────────
-export type UserRole = 'admin' | 'manager' | 'waiter'
+// admin   : Sahibi — her şey
+// manager : Müdür — denetim/raporlar/menü, sipariş AÇMAZ/KAPATMAZ
+// cashier : Kasiyer — sipariş aç/kapat/öde, masa transfer
+// waiter  : Garson — sipariş aç/kalem ekle, masa durumu
+export type UserRole = 'admin' | 'manager' | 'cashier' | 'waiter'
+
+// UI'da gösterilen Türkçe rol etiketleri — tek noktadan yönetim
+export const ROLE_LABELS: Record<UserRole, string> = {
+  admin:   'Sahibi',
+  manager: 'Müdür',
+  cashier: 'Kasiyer',
+  waiter:  'Garson',
+}
 
 export interface User {
   id: string

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { LockScreen } from './LockScreen'
@@ -147,7 +148,21 @@ export const AppLayout: React.FC = () => {
           onMenuClick={() => setMobileOpen(true)}
         />
         <main className="flex-1 overflow-auto bg-[var(--color-bg)]">
-          <Outlet />
+          {/* Sayfa geçiş animasyonu — rota değiştiğinde fade+slide.
+              "wait" mode: önce eski sayfa çıkar, sonra yeni gelir.
+              Düşük performanslı cihazlarda da pürüzsüz (sadece opacity+transform). */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="h-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 

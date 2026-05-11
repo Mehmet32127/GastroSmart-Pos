@@ -223,8 +223,9 @@ export const TopBar: React.FC<TopBarProps> = ({
             {user?.fullName}
           </p>
           <p className="text-[10px] text-[var(--color-text-muted)] font-body capitalize leading-tight">
-            {user?.role === 'admin' ? 'Yönetici' :
+            {user?.role === 'admin' ? 'Sahibi' :
              user?.role === 'manager' ? 'Müdür' :
+             user?.role === 'cashier' ? 'Kasiyer' :
              user?.role === 'waiter' ? 'Garson' : 'Kullanıcı'}
           </p>
         </div>
