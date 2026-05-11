@@ -158,18 +158,31 @@ export const CalculatorModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Ekran */}
-        <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-2xl p-4 mb-4 text-right">
-          {op && previous != null && (
-            <div className="text-xs text-[var(--color-text-muted)] font-mono">{previous} {op}</div>
-          )}
-          <div className="text-3xl font-bold font-mono text-[var(--color-text)] break-all">
-            {display}
-          </div>
-          <div className="text-xs text-[var(--color-text-muted)] font-body mt-1">
-            ≈ {formatCurrency(parseFloat(display) || 0)}
-          </div>
-        </div>
+        {/* Ekran — canlı önizleme: previous op display varsa sonucu göster */}
+        {(() => {
+          // Eğer bir işlem bekliyorsa (previous + op) ve display geçerli sayı ise,
+          // SONUCU canlı hesapla, alta yazdır. Yoksa sadece display'in TL gösterimi.
+          const livePreview = (op != null && previous != null && !waitingForOperand)
+            ? calculate(previous, parseFloat(display) || 0, op)
+            : null
+          return (
+            <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-2xl p-4 mb-4 text-right">
+              {op && previous != null && (
+                <div className="text-xs text-[var(--color-text-muted)] font-mono">{previous} {op}</div>
+              )}
+              <div className="text-3xl font-bold font-mono text-[var(--color-text)] break-all">
+                {display}
+              </div>
+              <div className="text-xs text-[var(--color-text-muted)] font-body mt-1">
+                {livePreview !== null ? (
+                  <>= <span className="text-[var(--color-accent)] font-semibold">{formatCurrency(livePreview)}</span></>
+                ) : (
+                  <>≈ {formatCurrency(parseFloat(display) || 0)}</>
+                )}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Tuşlar */}
         <div className="grid grid-cols-4 gap-2">
