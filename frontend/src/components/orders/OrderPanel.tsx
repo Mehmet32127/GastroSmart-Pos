@@ -36,6 +36,14 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
   const [tableNote, setTableNote] = useState(table.note || '')
   const [savingNote, setSavingNote] = useState(false)
 
+  // Backend'den (başka kullanıcıdan) yeni not gelirse local state'i güncelle.
+  // Sadece kullanıcı yazıyor olduğunda override etme — input focus iken stop.
+  useEffect(() => {
+    if (document.activeElement?.tagName !== 'INPUT') {
+      setTableNote(table.note || '')
+    }
+  }, [table.note])
+
   const saveTableNote = async () => {
     if (tableNote === (table.note || '')) return
     setSavingNote(true)

@@ -33,6 +33,11 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers = {}) {
     if (!prefs.shortcutsEnabled) return
 
     const handler = (e: KeyboardEvent) => {
+      // Açık modal varsa global kısayollar tetiklenmesin (Calculator, Lock, vs)
+      // Modal'lar kendi kapanma + klavye handler'larını yönetir.
+      const hasOpenModal = document.querySelector('[role="dialog"][aria-modal="true"]') !== null
+      if (hasOpenModal) return
+
       // Input/textarea içinde tetikleme — kullanıcı yazıyor olabilir
       const target = e.target as HTMLElement
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {

@@ -432,7 +432,10 @@ const ProfileSettingsCard: React.FC = () => {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const avatarFullUrl = user?.avatarUrl ? `${CONFIG.API_BASE}${user.avatarUrl}` : null
+  // Base64 data URL öncelikli, eski URL fallback (legacy avatar'lar için)
+  const avatarSrc = user?.avatarData
+    ? user.avatarData
+    : (user?.avatarUrl ? `${CONFIG.API_BASE}${user.avatarUrl}` : null)
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -446,10 +449,14 @@ const ProfileSettingsCard: React.FC = () => {
     setUploading(true)
     try {
       const { data } = await authApi.uploadAvatar(file)
-      if (user && data.data) setUser({ ...user, avatarUrl: data.data.url })
+      if (user && data.data) {
+        // Yeni Base64 datayı yerleştir, eski legacy URL'yi temizle
+        setUser({ ...user, avatarData: data.data.avatarData, avatarUrl: null })
+      }
       toast.success('Profil fotoğrafı güncellendi')
-    } catch {
-      toast.error('Yüklenemedi')
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Yüklenemedi'
+      toast.error(msg)
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -459,7 +466,7 @@ const ProfileSettingsCard: React.FC = () => {
   const handleDelete = async () => {
     try {
       await authApi.deleteAvatar()
-      if (user) setUser({ ...user, avatarUrl: null })
+      if (user) setUser({ ...user, avatarData: null, avatarUrl: null })
       toast.success('Profil fotoğrafı kaldırıldı')
     } catch {
       toast.error('Silinemedi')
@@ -475,9 +482,9 @@ const ProfileSettingsCard: React.FC = () => {
       {/* Avatar */}
       <div className="flex items-center gap-4 pb-4 mb-4 border-b border-[var(--color-border)]">
         <div className="relative">
-          {avatarFullUrl ? (
+          {avatarSrc ? (
             <img
-              src={avatarFullUrl}
+              src={avatarSrc}
               alt="Profil"
               className="w-20 h-20 rounded-2xl object-cover border-2 border-[var(--color-accent)]/30"
             />
@@ -507,9 +514,9 @@ const ProfileSettingsCard: React.FC = () => {
               className="px-3 py-1.5 rounded-xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-xs font-semibold font-body hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
             >
               <Camera size={12} />
-              {uploading ? 'Yükleniyor...' : (avatarFullUrl ? 'Değiştir' : 'Yükle')}
+              {uploading ? 'Yükleniyor...' : (avatarSrc ? 'Değiştir' : 'Yükle')}
             </button>
-            {avatarFullUrl && (
+            {avatarSrc && (
               <button
                 onClick={handleDelete}
                 className="px-3 py-1.5 rounded-xl bg-red-500/10 text-red-400 text-xs font-semibold font-body hover:bg-red-500/20 flex items-center gap-1.5"

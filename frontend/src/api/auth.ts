@@ -38,7 +38,7 @@ export const authApi = {
   uploadAvatar: (file: File) => {
     const formData = new FormData()
     formData.append('avatar', file)
-    return client.post<ApiResponse<{ url: string }>>('/auth/avatar', formData)
+    return client.post<ApiResponse<{ avatarData: string }>>('/auth/avatar', formData)
   },
 
   deleteAvatar: () => client.delete<ApiResponse>('/auth/avatar'),

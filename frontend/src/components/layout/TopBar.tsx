@@ -238,9 +238,15 @@ export const TopBar: React.FC<TopBarProps> = ({
         )}
       </div>
 
-      {/* User avatar — yüklenmişse fotoğraf, yoksa baş harfler */}
+      {/* User avatar — Base64 data öncelikli, legacy URL fallback */}
       <div className="flex items-center gap-2 pl-2 border-l border-[var(--color-border)]">
-        {user?.avatarUrl ? (
+        {user?.avatarData ? (
+          <img
+            src={user.avatarData}
+            alt={user.fullName}
+            className="w-8 h-8 rounded-xl object-cover border border-[var(--color-accent)]/30"
+          />
+        ) : user?.avatarUrl ? (
           <img
             src={`${CONFIG.API_BASE}${user.avatarUrl}`}
             alt={user.fullName}

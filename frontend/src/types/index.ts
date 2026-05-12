@@ -31,7 +31,8 @@ export interface User {
   createdAt: string
   tenantSlug?: string | null
   preferences?: UserPreferences
-  avatarUrl?: string | null
+  avatarData?: string | null   // Base64 data URL — yeni, kalıcı
+  avatarUrl?: string | null    // Legacy — geriye uyumluluk
 }
 
 export interface AuthTokens {

@@ -1,92 +1,60 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
-import { authApi } from '@/api/auth'
-import type { UserPreferences } from '@/types'
+import { usePreferencesStore, getEffectiveTheme } from '@/store/preferencesStore'
 import toast from 'react-hot-toast'
+import type { UserPreferences } from '@/types'
 
 /**
- * Kişisel UI tercihleri hook'u.
+ * Kişisel UI tercihleri hook'u — Zustand store wrapper.
  *
- * Davranış:
- *   - Mount'ta authStore'daki user.preferences değerlerini okur
- *   - Optimistic update: önce local state güncellenir, sonra backend
- *   - Hata olursa toast + rollback
- *   - localStorage'a da yedek yaz (offline'da çalışsın)
+ * v2: Local useState'ten Zustand'a taşındı. Tüm component'ler aynı state'i
+ * okur, race condition yok.
  *
- * theme: 'system' → tarayıcı/OS tercihini takip eder (prefers-color-scheme)
+ * - Backend'den /me ile gelen prefs → store'a sync edilir
+ * - Kullanıcı değiştirdiğinde → optimistic update + backend PATCH
+ * - localStorage'a otomatik persist
+ * - data-theme attribute HTML root'a otomatik uygulanır
  */
-
-const DEFAULT_PREFS: UserPreferences = {
-  theme:            'system',
-  accentColor:      null,
-  soundEnabled:     true,
-  shortcutsEnabled: true,
-}
-
-const STORAGE_KEY = 'gastro_user_prefs'
-
-function loadCachedPrefs(): UserPreferences {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) }
-  } catch { /* private mode */ }
-  return DEFAULT_PREFS
-}
-
-function saveCachedPrefs(prefs: UserPreferences) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs)) } catch { /* ignore */ }
-}
-
 export function useUserPreferences() {
   const user = useAuthStore((s) => s.user)
-  const setUser = useAuthStore((s) => s.setUser)
+  const prefs = usePreferencesStore((s) => s.prefs)
+  const setPrefs = usePreferencesStore((s) => s.setPrefs)
+  const updatePrefs = usePreferencesStore((s) => s.updatePrefs)
 
-  // İlk değer: localStorage cache (hızlı), sonra backend ile sync
-  const [prefs, setPrefs] = useState<UserPreferences>(() => loadCachedPrefs())
-
-  // user değişince (login, /me sonrası) backend'den geleni uygula
+  // /me sonrası gelen backend preferences'ı store'a yerleştir
   useEffect(() => {
-    if (user?.preferences) {
-      const merged = { ...DEFAULT_PREFS, ...user.preferences }
-      setPrefs(merged)
-      saveCachedPrefs(merged)
-    }
-  }, [user?.preferences])
+    if (user?.preferences) setPrefs(user.preferences)
+  }, [user?.preferences, setPrefs])
 
-  // Etkin tema (system mode için OS tercihine bak)
-  const effectiveTheme: 'dark' | 'light' = (() => {
-    if (prefs.theme !== 'system') return prefs.theme
-    if (typeof window === 'undefined') return 'dark'
-    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
-  })()
+  const effectiveTheme = getEffectiveTheme(prefs.theme)
 
-  // HTML'e data-theme attribute uygula — CSS variable'lar bunu okur
+  // HTML'e data-theme attribute uygula (CSS variables bunu okur)
   useEffect(() => {
     document.documentElement.dataset.theme = effectiveTheme
   }, [effectiveTheme])
 
-  const update = useCallback(async (patch: Partial<UserPreferences>) => {
-    const next = { ...prefs, ...patch }
-    setPrefs(next)
-    saveCachedPrefs(next)
-    try {
-      await authApi.updatePreferences(patch)
-      // Authstore'da user.preferences'i de güncel tut
-      if (user) setUser({ ...user, preferences: next })
-    } catch {
-      // Rollback
-      setPrefs(prefs)
-      saveCachedPrefs(prefs)
-      toast.error('Tercihler kaydedilemedi')
+  // System mode → OS değişimi (prefers-color-scheme) gerçek zamanlı yakala
+  useEffect(() => {
+    if (prefs.theme !== 'system') return
+    const mq = window.matchMedia('(prefers-color-scheme: light)')
+    const handler = () => {
+      document.documentElement.dataset.theme = mq.matches ? 'light' : 'dark'
     }
-  }, [prefs, user, setUser])
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [prefs.theme])
+
+  const update = async (patch: Partial<UserPreferences>) => {
+    const success = await updatePrefs(patch)
+    if (!success) toast.error('Tercihler kaydedilemedi')
+  }
 
   return {
     prefs,
     effectiveTheme,
-    setTheme:    (theme: UserPreferences['theme']) => update({ theme }),
-    setAccent:   (accentColor: string | null) => update({ accentColor }),
-    toggleSound: () => update({ soundEnabled: !prefs.soundEnabled }),
+    setTheme:        (theme: UserPreferences['theme']) => update({ theme }),
+    setAccent:       (accentColor: string | null) => update({ accentColor }),
+    toggleSound:     () => update({ soundEnabled: !prefs.soundEnabled }),
     toggleShortcuts: () => update({ shortcutsEnabled: !prefs.shortcutsEnabled }),
   }
 }
