@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Search, Bell, Wifi, WifiOff, TrendingUp, X, Check, CheckCheck, Menu, Sun, Moon, Volume2, VolumeX } from 'lucide-react'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
+import { useSound } from '@/hooks/useSound'
 import { cn, formatCurrency, formatRelative, getInitials } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
 import { CONFIG } from '@/config'
@@ -22,6 +23,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const { user } = useAuthStore()
   const { notifications, unreadCount, markRead, markAllRead } = useNotificationStore()
   const { prefs, effectiveTheme, setTheme, toggleSound } = useUserPreferences()
+  const { play: playSound } = useSound()
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [notifOpen, setNotifOpen] = useState(false)
@@ -140,10 +142,19 @@ export const TopBar: React.FC<TopBarProps> = ({
         )}
       </div>
 
-      {/* Sesli bildirim toggle — kullanıcı tercihi */}
+      {/* Sesli bildirim toggle — tek tık aç/kapat. Şift+tık test sesi çalar. */}
       <button
-        onClick={toggleSound}
-        title={prefs.soundEnabled ? 'Sesi kapat' : 'Sesi aç'}
+        onClick={(e) => {
+          if (e.shiftKey) {
+            // Shift+click: ses test (kullanıcı sesi duyabilsin)
+            playSound('notification')
+          } else {
+            toggleSound()
+            // Aç-kapa sırasında test ses (sadece açıyorsa)
+            if (!prefs.soundEnabled) setTimeout(() => playSound('success'), 100)
+          }
+        }}
+        title={prefs.soundEnabled ? 'Sesi kapat (Shift+tık: test)' : 'Sesi aç'}
         aria-label={prefs.soundEnabled ? 'Sesi kapat' : 'Sesi aç'}
         className="p-2 rounded-xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)] transition-colors hidden sm:block"
       >

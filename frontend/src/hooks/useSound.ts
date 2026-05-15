@@ -1,61 +1,115 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { useUserPreferences } from './useUserPreferences'
 
 /**
- * Web Audio API ile basit bip sesi.
+ * Web Audio API ile bildirim sesi.
  *
- * Avantaj: ses dosyası gerekmez, paket boyutu artmaz.
- * Dezavantaj: AudioContext "user gesture" sonrası açılır
- *   (tarayıcı autoplay policy) — ilk tıklamaya kadar bip çıkmaz, sorun değil.
+ * Stratejisi:
+ *   - Tarayıcı autoplay policy: AudioContext sadece kullanıcı etkileşiminden
+ *     SONRA açılır. Çözüm: ilk click/keydown/touch'ta global context "unlock"
+ *     ediliyor. Böylece arka planda Socket event'i geldiğinde ses çıkıyor.
+ *   - Tek bip belirsizdi — şimdi 2-3 tonlu melodi çalıyor (POS hissi).
  *
- * 3 ses tipi:
- *   - 'notification' (yeni sipariş geldi): 880Hz, 150ms
- *   - 'success'      (sipariş kapatıldı): 660Hz, 100ms
- *   - 'warning'      (yetersiz stok vb): 440Hz, 200ms
+ * Ses tipleri:
+ *   - 'notification' → di-din (880Hz + 1100Hz, dikkat çeker)
+ *   - 'success'      → yükselen do-re-mi (sipariş kapandı)
+ *   - 'warning'      → 3x kısa bip (440Hz, problem)
  */
 
 type SoundType = 'notification' | 'success' | 'warning'
 
-const SOUND_CONFIG: Record<SoundType, { freq: number; duration: number }> = {
-  notification: { freq: 880, duration: 150 },
-  success:      { freq: 660, duration: 100 },
-  warning:      { freq: 440, duration: 200 },
+// Her ses tipi için tonlar (her ton: frekans Hz + süre ms + delay ms)
+const SOUND_PATTERNS: Record<SoundType, Array<{ freq: number; ms: number; delay: number }>> = {
+  notification: [
+    { freq: 880,  ms: 120, delay: 0 },
+    { freq: 1100, ms: 180, delay: 130 },
+  ],
+  success: [
+    { freq: 660,  ms: 90, delay: 0 },
+    { freq: 880,  ms: 90, delay: 100 },
+    { freq: 1100, ms: 150, delay: 200 },
+  ],
+  warning: [
+    { freq: 440, ms: 100, delay: 0 },
+    { freq: 440, ms: 100, delay: 150 },
+    { freq: 440, ms: 100, delay: 300 },
+  ],
+}
+
+// Global AudioContext — sadece bir tane, unlock state'i tüm component'lerle paylaşılır
+let globalCtx: AudioContext | null = null
+
+function getCtx(): AudioContext | null {
+  if (typeof window === 'undefined') return null
+  if (!globalCtx) {
+    try {
+      globalCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    } catch {
+      return null
+    }
+  }
+  return globalCtx
 }
 
 export function useSound() {
   const { prefs } = useUserPreferences()
-  const ctxRef = useRef<AudioContext | null>(null)
+  const unlockedRef = useRef(false)
+
+  // İlk kullanıcı etkileşiminde AudioContext'i unlock et.
+  // Bundan sonra arka plan event'leri (Socket) bile ses çalabilir.
+  useEffect(() => {
+    if (unlockedRef.current) return
+
+    const unlock = () => {
+      const ctx = getCtx()
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume().catch(() => {})
+      }
+      unlockedRef.current = true
+      // Tek seferlik — listener'ları kaldır
+      ;['click', 'keydown', 'touchstart'].forEach((e) =>
+        document.removeEventListener(e, unlock)
+      )
+    }
+
+    ;['click', 'keydown', 'touchstart'].forEach((e) =>
+      document.addEventListener(e, unlock, { once: true, passive: true })
+    )
+
+    return () => {
+      ;['click', 'keydown', 'touchstart'].forEach((e) =>
+        document.removeEventListener(e, unlock)
+      )
+    }
+  }, [])
+
+  const playTone = useCallback((ctx: AudioContext, freq: number, ms: number, startAt: number) => {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.value = freq
+    // Hafif attack + decay (cliccch sesi olmasın)
+    gain.gain.setValueAtTime(0.0001, startAt)
+    gain.gain.exponentialRampToValueAtTime(0.35, startAt + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + ms / 1000)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start(startAt)
+    osc.stop(startAt + ms / 1000)
+  }, [])
 
   const play = useCallback((type: SoundType = 'notification') => {
-    if (!prefs.soundEnabled) return  // kullanıcı kapatmış
+    if (!prefs.soundEnabled) return
+    const ctx = getCtx()
+    if (!ctx) return
 
-    try {
-      // Lazy init — ilk ses denemesinde context oluştur
-      if (!ctxRef.current) {
-        ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
-      }
-      const ctx = ctxRef.current
+    // Suspend ise resume dene (kullanıcı henüz tıklamadıysa fail olabilir — OK)
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {})
 
-      // Suspend olmuşsa devam ettir (autoplay policy)
-      if (ctx.state === 'suspended') ctx.resume()
-
-      const { freq, duration } = SOUND_CONFIG[type]
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.value = freq
-
-      // Hafif fade-out (cliccch sesini önler)
-      gain.gain.setValueAtTime(0.3, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000)
-
-      osc.connect(gain).connect(ctx.destination)
-      osc.start()
-      osc.stop(ctx.currentTime + duration / 1000)
-    } catch {
-      // Audio context kullanılamıyor — sessizce geç
-    }
-  }, [prefs.soundEnabled])
+    const now = ctx.currentTime
+    SOUND_PATTERNS[type].forEach((tone) => {
+      playTone(ctx, tone.freq, tone.ms, now + tone.delay / 1000)
+    })
+  }, [prefs.soundEnabled, playTone])
 
   return { play }
 }

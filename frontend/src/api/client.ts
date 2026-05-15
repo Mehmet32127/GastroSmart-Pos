@@ -63,6 +63,14 @@ function flushQueue(error: unknown, token: string | null) {
 client.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken
   if (token) config.headers.Authorization = `Bearer ${token}`
+
+  // FormData için Content-Type'ı SİL — axios kendi multipart boundary'sini
+  // oluşturacak ('multipart/form-data; boundary=...'). Default 'application/json'
+  // burada kalırsa backend Multer body'i parse edemez — avatar upload patlardı.
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
+  }
+
   return config
 })
 
