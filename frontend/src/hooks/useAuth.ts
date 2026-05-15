@@ -22,11 +22,9 @@ export function useAuth() {
         setTokens(tokens.accessToken, tokens.refreshToken)
         setUser(user)
 
-        // Bir sonraki girişte hızlı bağlanmak için bu cihaza tenant slug'ı kaydet.
-        // Auto-discover yine çalışır ama slug verilirse direk o tenant'a yönlenir.
-        if (user.tenantSlug) {
-          localStorage.setItem('gastro_tenant_slug', user.tenantSlug)
-        }
+        // KASITLI: tenant slug localStorage'a yazılmıyor.
+        // Aynı tarayıcıdan farklı restoranlara giriş yapılabilsin diye —
+        // login formunda her zaman auto-discover çalışır (username + şifre eşleşmesi).
 
         toast.success(`Hoş geldiniz, ${user.fullName}!`)
         navigate('/')

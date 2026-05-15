@@ -28,26 +28,22 @@ export const LoginPage: React.FC = () => {
   const [showPw, setShowPw]   = useState(false)
   const [focused, setFocused] = useState<string | null>(null)
 
-  // Cihaz daha önce bir tenant'a giriş yaptıysa onu hatırla
-  const cachedSlug = urlSlug ?? localStorage.getItem(TENANT_SLUG_KEY) ?? ''
-
-  // Auto-redirect: /login (slug'sız) ama localStorage'da son tenant kayıtlıysa,
-  // direkt /r/{slug}/login'e yönlendir. Auto-discover gereksiz, tek tenant'a
-  // gider — hız + güvenli (cross-tenant çakışma yok).
-  useEffect(() => {
-    if (urlSlug) return  // zaten slug'lı sayfada
-    const saved = localStorage.getItem(TENANT_SLUG_KEY)
-    if (saved && saved.trim()) {
-      navigate(`/r/${saved}/login`, { replace: true })
-    }
-  }, [urlSlug, navigate])
+  // URL'de slug varsa (örn /r/zexra/login) onu kullan, aksi halde
+  // auto-discover (backend tüm tenantlarda paralel arar).
+  // KASITLI: localStorage cache KULLANILMIYOR — kullanıcı farklı restorana
+  // giriş yapabilsin diye. Tek tarayıcıdan birden fazla restorana erişim açık.
+  const formSlug = urlSlug ?? ''
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { tenantSlug: cachedSlug },
+    defaultValues: { tenantSlug: formSlug },
   })
 
   const onSubmit = (data: FormData) => {
+    // tenantSlug sadece URL'den (/r/{slug}/login) gelirse gönderilir.
+    // Aksi halde undefined → backend auto-discover yapar (kullanıcı + şifre eşleşmesi
+    // bir tenant'ta bulunursa o tenant'a login). Username/şifre kombinasyonu
+    // restoranlar arası benzersizse, sistem doğru restorana yönlendirir.
     login({
       ...data,
       tenantSlug: (data.tenantSlug?.trim() || undefined),
