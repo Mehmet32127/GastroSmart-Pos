@@ -18,13 +18,14 @@ export const settingsApi = {
   update: (data: Record<string, unknown>) =>
     client.put<ApiResponse>('/settings', data),
 
+  // Content-Type elle SET EDİLMEZ — interceptor FormData için otomatik halleder
   uploadLogo: (file: File) => {
     const formData = new FormData()
     formData.append('logo', file)
-    return client.post<ApiResponse<{ url: string }>>('/settings/logo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    return client.post<ApiResponse<{ url: string }>>('/settings/logo', formData)
   },
+
+  deleteLogo: () => client.delete<ApiResponse>('/settings/logo'),
 
   getTheme: () =>
     client.get<ApiResponse<Theme>>('/settings/theme'),

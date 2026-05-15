@@ -24,6 +24,7 @@ import { SettingsPage }     from '@/pages/SettingsPage'
 // Stores / hooks
 import { useAuthStore }   from '@/store/authStore'
 import { useThemeStore }  from '@/store/themeStore'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
 import { CONFIG }         from '@/config'
 
 // ─── Role Guard ──────────────────────────────────────────────────────────────
@@ -36,6 +37,11 @@ const RoleGuard: React.FC<{ roles: string[]; children: React.ReactNode }> = ({ r
 // ─── App ─────────────────────────────────────────────────────────────────────
 export const App: React.FC = () => {
   const { applyTheme } = useThemeStore()
+
+  // Kullanıcı tema tercihi (aydınlık/karanlık) — login sayfası dahil her yerde aktif.
+  // useUserPreferences `data-theme` HTML attribute'unu otomatik set eder, CSS
+  // variables buna göre değişir.
+  useUserPreferences()
 
   // Apply theme on first render
   useEffect(() => {

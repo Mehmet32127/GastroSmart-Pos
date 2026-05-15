@@ -3,6 +3,7 @@ import { settingsApi } from '@/api/settings'
 
 interface SettingsStore {
   restaurantName: string
+  logoUrl: string | null
   currency: string
   timezone: string
   loaded: boolean
@@ -11,6 +12,7 @@ interface SettingsStore {
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
   restaurantName: 'GastroSmart',
+  logoUrl: null,
   currency: 'TRY',
   timezone: 'Europe/Istanbul',
   loaded: false,
@@ -21,6 +23,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       if (res.data) {
         set({
           restaurantName: res.data.restaurantName || 'GastroSmart',
+          logoUrl: res.data.logoUrl || null,
           currency: res.data.currency || 'TRY',
           timezone: res.data.timezone || 'Europe/Istanbul',
           loaded: true,

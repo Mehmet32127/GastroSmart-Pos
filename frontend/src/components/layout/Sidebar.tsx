@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/utils/format'
 import { useAuth } from '@/hooks/useAuth'
+import { useSettingsStore } from '@/store/settingsStore'
 
 interface NavItem {
   path: string
@@ -52,6 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation()
   const { user, logout } = useAuth()
   const [logoutConfirm, setLogoutConfirm] = useState(false)
+  const logoUrl = useSettingsStore((s) => s.logoUrl)
 
   const getNavBadge = (path: string) => {
     if (path === '/orders' && pendingOrders > 0) return pendingOrders
@@ -74,23 +76,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Logo */}
       <div className={cn('flex items-center h-16 px-4 border-b border-[var(--color-border)]', collapsed ? 'justify-center' : 'gap-3')}>
         <div className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden shadow-glow-brand bg-[var(--color-accent)] flex items-center justify-center">
-          <img
-            src="/logo.png"
-            alt="logo"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const img = e.currentTarget
-              img.style.display = 'none'
-              const fb = img.nextElementSibling as HTMLElement | null
-              if (fb) fb.style.display = 'flex'
-            }}
-          />
-          <span
-            style={{ display: 'none' }}
-            className="w-full h-full items-center justify-center text-[var(--color-accent-text)] font-display font-bold text-sm select-none"
-          >
-            {restaurantName?.[0]?.toUpperCase() || 'G'}
-          </span>
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="logo"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="w-full h-full flex items-center justify-center text-[var(--color-accent-text)] font-display font-bold text-sm select-none">
+              {restaurantName?.[0]?.toUpperCase() || 'G'}
+            </span>
+          )}
         </div>
         {!collapsed && (
           <div className="overflow-hidden">

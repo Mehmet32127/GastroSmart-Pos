@@ -246,6 +246,9 @@ export const SettingsPage: React.FC = () => {
       {/* Profil Fotoğrafı + Kişisel Tercihler */}
       <ProfileSettingsCard />
 
+      {/* Restoran Logosu — sadece admin değiştirebilir */}
+      <RestaurantLogoCard />
+
       {/* Restaurant Info */}
       <Card>
         <h2 className="text-sm font-semibold font-display text-[var(--color-text)] mb-4 flex items-center gap-2">
@@ -584,6 +587,101 @@ const ProfileSettingsCard: React.FC = () => {
         <p className="text-[10px] text-[var(--color-text-muted)]/70 font-body px-1">
           Ctrl + / ile kısayollar rehberini açabilirsin
         </p>
+      </div>
+    </Card>
+  )
+}
+
+// ─── Restoran Logosu Kartı ──────────────────────────────────────────────────
+// Sadece admin/manager. Base64 olarak DB'ye yazılır (Render restart'a dayanır).
+const RestaurantLogoCard: React.FC = () => {
+  const isAdminOrManager = useAuthStore((s) => s.hasRole(['admin', 'manager']))
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    settingsApi.get().then(({ data }) => {
+      if (data.data?.logoUrl) setLogoUrl(data.data.logoUrl)
+    }).catch(() => {})
+  }, [])
+
+  if (!isAdminOrManager) return null
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 500 * 1024) {
+      toast.error(`Dosya çok büyük: ${Math.round(file.size / 1024)} KB. Maksimum 500 KB.`)
+      return
+    }
+    setUploading(true)
+    try {
+      const { data } = await settingsApi.uploadLogo(file)
+      if (data.data?.url) setLogoUrl(data.data.url)
+      toast.success('Restoran logosu güncellendi')
+      window.dispatchEvent(new CustomEvent('settings:updated'))
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Yüklenemedi')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const handleDelete = async () => {
+    try {
+      await settingsApi.deleteLogo()
+      setLogoUrl(null)
+      toast.success('Logo kaldırıldı')
+      window.dispatchEvent(new CustomEvent('settings:updated'))
+    } catch {
+      toast.error('Silinemedi')
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="text-sm font-semibold font-display text-[var(--color-text)] flex items-center gap-2 mb-4">
+        <Building2 size={16} className="text-[var(--color-accent)]" /> Restoran Logosu
+      </h2>
+      <div className="flex items-center gap-4">
+        <div className="w-24 h-24 rounded-2xl bg-[var(--color-surface2)] border border-[var(--color-border)] flex items-center justify-center overflow-hidden">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+          ) : (
+            <Building2 size={32} className="text-[var(--color-text-muted)]/40" />
+          )}
+        </div>
+        <div className="flex-1">
+          <p className="text-xs text-[var(--color-text-muted)] font-body mb-2">
+            Sidebar ve fişlerde görünür. JPG/PNG/WebP, max 500 KB.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="px-3 py-1.5 rounded-xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-xs font-semibold font-body hover:opacity-90 disabled:opacity-50"
+            >
+              {uploading ? 'Yükleniyor...' : (logoUrl ? 'Değiştir' : 'Logo Yükle')}
+            </button>
+            {logoUrl && (
+              <button
+                onClick={handleDelete}
+                className="px-3 py-1.5 rounded-xl bg-red-500/10 text-red-400 text-xs font-semibold font-body hover:bg-red-500/20"
+              >
+                Kaldır
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </Card>
   )

@@ -17,9 +17,33 @@
     <title>GastroSmart POS</title>
     <style>
       * { -webkit-tap-highlight-color: transparent; }
-      body { margin: 0; overflow: hidden; background: #0f1117; }
+      body { margin: 0; overflow: hidden; }
       #root { width: 100vw; height: 100vh; overflow: hidden; }
+      /* Tema yüklenmeden body bg flash olmasın — JS data-theme set edene kadar */
+      html[data-theme="light"] body { background: #f7f8fa; }
+      html:not([data-theme="light"]) body { background: #0f1117; }
     </style>
+    <script>
+      // FOUC önleme: React yüklenmeden ÖNCE localStorage'dan tema oku ve HTML'e uygula.
+      // useUserPreferences sonra zaten doğrularsa devralır.
+      (function() {
+        try {
+          var raw = localStorage.getItem('gastro_user_prefs')
+          var theme = 'dark'  // default
+          if (raw) {
+            var parsed = JSON.parse(raw)
+            var t = parsed?.state?.prefs?.theme || parsed?.prefs?.theme
+            if (t === 'light' || t === 'dark') theme = t
+            else if (t === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches) theme = 'light'
+          } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+            theme = 'light'
+          }
+          document.documentElement.dataset.theme = theme
+        } catch (e) {
+          document.documentElement.dataset.theme = 'dark'
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
