@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -24,11 +24,23 @@ export const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuth()
   const { isOnline } = useOfflineQueue()
   const { slug: urlSlug } = useParams<{ slug?: string }>()
+  const navigate = useNavigate()
   const [showPw, setShowPw]   = useState(false)
   const [focused, setFocused] = useState<string | null>(null)
 
   // Cihaz daha önce bir tenant'a giriş yaptıysa onu hatırla
   const cachedSlug = urlSlug ?? localStorage.getItem(TENANT_SLUG_KEY) ?? ''
+
+  // Auto-redirect: /login (slug'sız) ama localStorage'da son tenant kayıtlıysa,
+  // direkt /r/{slug}/login'e yönlendir. Auto-discover gereksiz, tek tenant'a
+  // gider — hız + güvenli (cross-tenant çakışma yok).
+  useEffect(() => {
+    if (urlSlug) return  // zaten slug'lı sayfada
+    const saved = localStorage.getItem(TENANT_SLUG_KEY)
+    if (saved && saved.trim()) {
+      navigate(`/r/${saved}/login`, { replace: true })
+    }
+  }, [urlSlug, navigate])
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),

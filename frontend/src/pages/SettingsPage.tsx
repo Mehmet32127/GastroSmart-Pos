@@ -441,8 +441,9 @@ const ProfileSettingsCard: React.FC = () => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Dosya 2 MB\'tan büyük olamaz')
+    // Backend limit ile eşleşmeli (500 KB) — büyükse hiç yükleme deneme
+    if (file.size > 500 * 1024) {
+      toast.error(`Dosya çok büyük: ${Math.round(file.size / 1024)} KB. Maksimum 500 KB.`)
       return
     }
 
