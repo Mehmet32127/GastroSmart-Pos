@@ -76,8 +76,11 @@ export const adminApi = {
   updateTenant: (slug: string, data: Partial<Pick<Tenant, 'name' | 'plan' | 'active' | 'contactEmail' | 'notes'>>) =>
     adminClient.patch<{ success: boolean; data: Tenant }>(`/tenants/${slug}`, data),
 
-  deleteTenant: (slug: string) =>
-    adminClient.delete<{ success: boolean; data: Tenant }>(`/tenants/${slug}`),
+  // Pasifleştirme — re-auth gerekli (yanlış basma koruması)
+  deleteTenant: (slug: string, superadminPassword: string) =>
+    adminClient.delete<{ success: boolean; data: Tenant }>(`/tenants/${slug}`, {
+      data: { superadminPassword },
+    }),
 
   resetAdminPassword: (slug: string, superadminPassword: string) =>
     adminClient.post<{
@@ -91,7 +94,8 @@ export const adminApi = {
       }
     }>(`/tenants/${slug}/reset-admin-password`, { superadminPassword }),
 
-  seedDemo: (slug: string) =>
+  // Demo doldurma — re-auth gerekli (yanlış basma koruması)
+  seedDemo: (slug: string, superadminPassword: string) =>
     adminClient.post<{
       success: boolean;
       data: {
@@ -101,5 +105,5 @@ export const adminApi = {
         tablesAdded: number
       }
       message?: string
-    }>(`/tenants/${slug}/seed-demo`),
+    }>(`/tenants/${slug}/seed-demo`, { superadminPassword }),
 }

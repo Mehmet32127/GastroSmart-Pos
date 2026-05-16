@@ -46,9 +46,12 @@ export const AdminDashboardPage: React.FC = () => {
   }
 
   const handleSeedDemo = async (tenant: Tenant) => {
+    // Re-auth: yanlışlıkla basma koruması
+    const pwd = window.prompt(`"${tenant.name}" restoranına ~100 demo ürün eklenecek.\nOnaylamak için süper-admin şifrenizi girin:`)
+    if (!pwd) return
     setSeedingSlug(tenant.slug)
     try {
-      const res = await adminApi.seedDemo(tenant.slug)
+      const res = await adminApi.seedDemo(tenant.slug, pwd)
       const d = res.data.data
       toast.success(`${d.itemsAdded} ürün, ${d.tablesAdded} masa, ${d.categoriesAdded} kategori eklendi`)
     } catch (err: any) {
@@ -62,7 +65,10 @@ export const AdminDashboardPage: React.FC = () => {
     setTogglingSlug(tenant.slug)
     try {
       if (tenant.active) {
-        await adminApi.deleteTenant(tenant.slug)
+        // Pasifleştirme — re-auth gerekli
+        const pwd = window.prompt(`"${tenant.name}" pasifleştirilecek (giriş engellenir).\nOnaylamak için süper-admin şifrenizi girin:`)
+        if (!pwd) { setTogglingSlug(null); setConfirmDeactivate(null); return }
+        await adminApi.deleteTenant(tenant.slug, pwd)
         toast.success(`${tenant.name} pasifleştirildi`)
       } else {
         await adminApi.updateTenant(tenant.slug, { active: true })
