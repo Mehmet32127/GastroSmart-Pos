@@ -611,8 +611,10 @@ const RestaurantLogoCard: React.FC = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 500 * 1024) {
-      toast.error(`Dosya çok büyük: ${Math.round(file.size / 1024)} KB. Maksimum 500 KB.`)
+    if (file.size > 1024 * 1024) {
+      toast.error(`Dosya çok büyük: ${(file.size / 1024 / 1024).toFixed(1)} MB. Maksimum 1 MB.`)
+      // Input'u sıfırla — aynı dosya tekrar seçilince onChange tekrar tetiklensin
+      if (fileRef.current) fileRef.current.value = ''
       return
     }
     setUploading(true)
@@ -655,7 +657,7 @@ const RestaurantLogoCard: React.FC = () => {
         </div>
         <div className="flex-1">
           <p className="text-xs text-[var(--color-text-muted)] font-body mb-2">
-            Sidebar ve fişlerde görünür. JPG/PNG/WebP, max 500 KB.
+            Sidebar ve fişlerde görünür. JPG/PNG/WebP, max 1 MB.
           </p>
           <div className="flex flex-wrap gap-2">
             <input

@@ -20,6 +20,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [reAuth, setReAuth] = useState<{ tenant: Tenant; action: 'seed' | 'deactivate' } | null>(null)
   const [reAuthPwd, setReAuthPwd] = useState('')
   const [reAuthLoading, setReAuthLoading] = useState(false)
+  const [showReAuthPwd, setShowReAuthPwd] = useState(false)
   const [resetForTenant, setResetForTenant] = useState<Tenant | null>(null)
   const [resetResult, setResetResult] = useState<{
     tenantName: string
@@ -205,56 +206,65 @@ export const AdminDashboardPage: React.FC = () => {
         onClose={() => setCreated(null)}
       />
 
-      {/* Re-auth modalı — kritik işlem öncesi süper-admin şifre onayı */}
-      <Modal
-        isOpen={!!reAuth}
-        onClose={() => { if (!reAuthLoading) { setReAuth(null); setReAuthPwd('') } }}
-        title={reAuth?.action === 'seed' ? 'Demo Doldur — Onay' : 'Pasifleştir — Onay'}
-      >
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-            <AlertTriangle size={18} className="text-amber-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-[var(--color-text)] font-body">
-              {reAuth?.action === 'seed'
-                ? <><strong>{reAuth?.tenant.name}</strong> restoranına ~100 demo ürün + masalar eklenecek. Mevcut veriler silinmez.</>
-                : <><strong>{reAuth?.tenant.name}</strong> pasifleştirilecek — kullanıcılar giriş yapamaz. Veritabanı silinmez, sonra tekrar aktifleştirilebilir.</>}
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">
-              Süper-admin şifreniz
-            </label>
-            <input
-              type="password"
-              value={reAuthPwd}
-              autoFocus
-              onChange={(e) => setReAuthPwd(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleReAuthConfirm() }}
-              placeholder="Onaylamak için şifrenizi girin"
-              className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm font-body text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
-            />
-          </div>
-
-          <div className="flex gap-2 justify-end">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => { setReAuth(null); setReAuthPwd('') }}
-              disabled={reAuthLoading}
-            >
-              İptal
+      {/* Re-auth modalı — şifre-sıfırlama modalıyla birebir aynı görsel */}
+      {reAuth && (
+        <Modal
+          isOpen={true}
+          onClose={() => { if (!reAuthLoading) { setReAuth(null); setReAuthPwd(''); setShowReAuthPwd(false) } }}
+          title={reAuth.action === 'seed' ? 'Demo Doldur' : 'Restoranı Pasifleştir'}
+          size="sm"
+          footer={<>
+            <Button variant="secondary" onClick={() => { setReAuth(null); setReAuthPwd(''); setShowReAuthPwd(false) }} disabled={reAuthLoading}>İptal</Button>
+            <Button onClick={handleReAuthConfirm} loading={reAuthLoading} disabled={!reAuthPwd}>
+              {reAuth.action === 'seed' ? 'Demo Doldur' : 'Pasifleştir'}
             </Button>
-            <Button
-              size="sm"
-              loading={reAuthLoading}
-              onClick={handleReAuthConfirm}
-            >
-              {reAuth?.action === 'seed' ? 'Demo Doldur' : 'Pasifleştir'}
-            </Button>
+          </>}
+        >
+          <div className="space-y-4">
+            <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 flex gap-2">
+              <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-400 font-body space-y-1">
+                {reAuth.action === 'seed' ? (
+                  <>
+                    <p><strong>{reAuth.tenant.name}</strong> restoranına ~100 demo ürün ve masalar eklenecek.</p>
+                    <p>Mevcut veriler silinmez, üzerine eklenir.</p>
+                  </>
+                ) : (
+                  <>
+                    <p><strong>{reAuth.tenant.name}</strong> pasifleştirilecek — kullanıcılar giriş yapamaz.</p>
+                    <p>Veritabanı silinmez, sonra tekrar aktifleştirilebilir.</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">
+                Devam etmek için <strong className="text-[var(--color-text)]">süper-admin şifrenizi</strong> tekrar girin
+              </label>
+              <div className="relative">
+                <input
+                  type={showReAuthPwd ? 'text' : 'password'}
+                  value={reAuthPwd}
+                  onChange={(e) => setReAuthPwd(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && reAuthPwd && !reAuthLoading) handleReAuthConfirm() }}
+                  autoFocus
+                  autoComplete="current-password"
+                  className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 pr-10 text-sm font-body text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowReAuthPwd(!showReAuthPwd)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                  tabIndex={-1}
+                >
+                  {showReAuthPwd ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Şifre sıfırlama: re-auth gerektirir */}
       <ResetPasswordReauthModal
