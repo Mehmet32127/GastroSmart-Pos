@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Plus, LogOut, ShieldCheck, Building2, Copy, Check, Power, AlertTriangle, KeyRound, Eye, EyeOff, Database } from 'lucide-react'
-import { Modal, ConfirmDialog } from '@/components/ui/Modal'
+import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Badge, Card, Spinner, EmptyState } from '@/components/ui/common'
 import { adminApi, type Tenant, type CreateTenantResponse } from '@/api/admin'
@@ -15,8 +15,11 @@ export const AdminDashboardPage: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false)
   const [created, setCreated] = useState<CreateTenantResponse | null>(null)
   const [togglingSlug, setTogglingSlug] = useState<string | null>(null)
-  const [confirmDeactivate, setConfirmDeactivate] = useState<Tenant | null>(null)
   const [seedingSlug, setSeedingSlug] = useState<string | null>(null)
+  // Re-auth modal: kritik işlem öncesi süper-admin şifre onayı
+  const [reAuth, setReAuth] = useState<{ tenant: Tenant; action: 'seed' | 'deactivate' } | null>(null)
+  const [reAuthPwd, setReAuthPwd] = useState('')
+  const [reAuthLoading, setReAuthLoading] = useState(false)
   const [resetForTenant, setResetForTenant] = useState<Tenant | null>(null)
   const [resetResult, setResetResult] = useState<{
     tenantName: string
@@ -45,41 +48,44 @@ export const AdminDashboardPage: React.FC = () => {
     return <Navigate to="/admin/login" replace />
   }
 
-  const handleSeedDemo = async (tenant: Tenant) => {
-    // Re-auth: yanlışlıkla basma koruması
-    const pwd = window.prompt(`"${tenant.name}" restoranına ~100 demo ürün eklenecek.\nOnaylamak için süper-admin şifrenizi girin:`)
-    if (!pwd) return
-    setSeedingSlug(tenant.slug)
-    try {
-      const res = await adminApi.seedDemo(tenant.slug, pwd)
-      const d = res.data.data
-      toast.success(`${d.itemsAdded} ürün, ${d.tablesAdded} masa, ${d.categoriesAdded} kategori eklendi`)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Demo doldurulamadı')
-    } finally {
-      setSeedingSlug(null)
-    }
-  }
-
-  const handleToggleActive = async (tenant: Tenant) => {
+  // Aktifleştirme zararsız — şifre istemez. Pasifleştirme + demo için re-auth modal açılır.
+  const handleActivate = async (tenant: Tenant) => {
     setTogglingSlug(tenant.slug)
     try {
-      if (tenant.active) {
-        // Pasifleştirme — re-auth gerekli
-        const pwd = window.prompt(`"${tenant.name}" pasifleştirilecek (giriş engellenir).\nOnaylamak için süper-admin şifrenizi girin:`)
-        if (!pwd) { setTogglingSlug(null); setConfirmDeactivate(null); return }
-        await adminApi.deleteTenant(tenant.slug, pwd)
-        toast.success(`${tenant.name} pasifleştirildi`)
-      } else {
-        await adminApi.updateTenant(tenant.slug, { active: true })
-        toast.success(`${tenant.name} aktifleştirildi`)
-      }
+      await adminApi.updateTenant(tenant.slug, { active: true })
+      toast.success(`${tenant.name} aktifleştirildi`)
       await load()
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'İşlem başarısız')
     } finally {
       setTogglingSlug(null)
-      setConfirmDeactivate(null)
+    }
+  }
+
+  // Re-auth modal onaylanınca çalışır
+  const handleReAuthConfirm = async () => {
+    if (!reAuth || !reAuthPwd.trim()) {
+      toast.error('Şifre gerekli')
+      return
+    }
+    const { tenant, action } = reAuth
+    setReAuthLoading(true)
+    try {
+      if (action === 'seed') {
+        const res = await adminApi.seedDemo(tenant.slug, reAuthPwd)
+        const d = res.data.data
+        toast.success(`${d.itemsAdded} ürün, ${d.tablesAdded} masa, ${d.categoriesAdded} kategori eklendi`)
+      } else {
+        await adminApi.deleteTenant(tenant.slug, reAuthPwd)
+        toast.success(`${tenant.name} pasifleştirildi`)
+        await load()
+      }
+      setReAuth(null)
+      setReAuthPwd('')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'İşlem başarısız')
+    } finally {
+      setReAuthLoading(false)
     }
   }
 
@@ -151,7 +157,7 @@ export const AdminDashboardPage: React.FC = () => {
                       size="sm"
                       icon={<Database size={14} />}
                       loading={seedingSlug === t.slug}
-                      onClick={() => handleSeedDemo(t)}
+                      onClick={() => { setReAuth({ tenant: t, action: 'seed' }); setReAuthPwd('') }}
                       title="Bu tenant'a örnek ürünler ve masalar ekle (mevcut data silinmez)"
                     >
                       Demo Doldur
@@ -170,7 +176,9 @@ export const AdminDashboardPage: React.FC = () => {
                       size="sm"
                       icon={<Power size={14} />}
                       loading={togglingSlug === t.slug}
-                      onClick={() => t.active ? setConfirmDeactivate(t) : handleToggleActive(t)}
+                      onClick={() => t.active
+                        ? (setReAuth({ tenant: t, action: 'deactivate' }), setReAuthPwd(''))
+                        : handleActivate(t)}
                     >
                       {t.active ? 'Pasifleştir' : 'Aktifleştir'}
                     </Button>
@@ -197,15 +205,56 @@ export const AdminDashboardPage: React.FC = () => {
         onClose={() => setCreated(null)}
       />
 
-      <ConfirmDialog
-        isOpen={!!confirmDeactivate}
-        title="Restoranı pasifleştir"
-        message={`${confirmDeactivate?.name} pasifleştirilecek. Veritabanı silinmeyecek, tekrar aktifleştirilebilir. Devam edilsin mi?`}
-        confirmText="Pasifleştir"
-        danger
-        onConfirm={() => confirmDeactivate && handleToggleActive(confirmDeactivate)}
-        onCancel={() => setConfirmDeactivate(null)}
-      />
+      {/* Re-auth modalı — kritik işlem öncesi süper-admin şifre onayı */}
+      <Modal
+        isOpen={!!reAuth}
+        onClose={() => { if (!reAuthLoading) { setReAuth(null); setReAuthPwd('') } }}
+        title={reAuth?.action === 'seed' ? 'Demo Doldur — Onay' : 'Pasifleştir — Onay'}
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <AlertTriangle size={18} className="text-amber-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-[var(--color-text)] font-body">
+              {reAuth?.action === 'seed'
+                ? <><strong>{reAuth?.tenant.name}</strong> restoranına ~100 demo ürün + masalar eklenecek. Mevcut veriler silinmez.</>
+                : <><strong>{reAuth?.tenant.name}</strong> pasifleştirilecek — kullanıcılar giriş yapamaz. Veritabanı silinmez, sonra tekrar aktifleştirilebilir.</>}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">
+              Süper-admin şifreniz
+            </label>
+            <input
+              type="password"
+              value={reAuthPwd}
+              autoFocus
+              onChange={(e) => setReAuthPwd(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleReAuthConfirm() }}
+              placeholder="Onaylamak için şifrenizi girin"
+              className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm font-body text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
+            />
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => { setReAuth(null); setReAuthPwd('') }}
+              disabled={reAuthLoading}
+            >
+              İptal
+            </Button>
+            <Button
+              size="sm"
+              loading={reAuthLoading}
+              onClick={handleReAuthConfirm}
+            >
+              {reAuth?.action === 'seed' ? 'Demo Doldur' : 'Pasifleştir'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Şifre sıfırlama: re-auth gerektirir */}
       <ResetPasswordReauthModal
