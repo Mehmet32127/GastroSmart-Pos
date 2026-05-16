@@ -171,8 +171,9 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
   return (
     // Backdrop — boşluğa tıklayınca kapat
     <div className="fixed inset-0 z-50 flex items-stretch justify-end" onClick={onClose}>
-      {/* Panel — tıklamayı durdur */}
-      <div className="flex flex-col bg-[var(--color-bg)] w-full max-w-2xl h-full shadow-2xl"
+      {/* Panel — tablet/mobilde TAM EKRAN (sipariş alırken masa planına bakılmaz),
+          desktop'ta (lg+) yarım ekran (yan yana masa planı + panel). */}
+      <div className="flex flex-col bg-[var(--color-bg)] w-full max-w-full lg:max-w-2xl h-full shadow-2xl"
         onClick={e => e.stopPropagation()}>
 
         {view === 'order' ? (
@@ -350,8 +351,8 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
 
             {/* Gövde: sol kategori listesi + sağ ürün grid */}
             <div className="flex flex-1 overflow-hidden">
-              {/* Sol: Kategori listesi — tümü görünür, kaydırmalı */}
-              <div className="w-36 flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] overflow-y-auto flex flex-col gap-0.5 p-2">
+              {/* Sol: Kategori listesi — dar ekranda daha ince */}
+              <div className="w-28 sm:w-36 flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] overflow-y-auto flex flex-col gap-0.5 p-2">
                 {categories.map(cat => (
                   <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
                     className={cn(
@@ -366,9 +367,10 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
                 ))}
               </div>
 
-              {/* Sağ: Ürün grid — 2 sütun, tablet dostu */}
+              {/* Sağ: Ürün grid — ekran genişledikçe daha çok sütun
+                  (tablet tam ekranda 3-4 sütun sığar, ürün aramak kolaylaşır) */}
               <div className="flex-1 overflow-y-auto p-3">
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-3 gap-2.5">
                   {filteredItems.map(item => (
                     <button key={item.id} onClick={() => handleAddItem(item)}
                       disabled={isLoading}
