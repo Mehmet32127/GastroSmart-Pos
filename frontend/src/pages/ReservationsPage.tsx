@@ -81,6 +81,16 @@ export const ReservationsPage: React.FC = () => {
     }
   }
 
+  const handleMarkDepositPaid = async (res: Reservation) => {
+    try {
+      await reservationsApi.updateStatus(res.id, res.status, { depositPaid: true })
+      toast.success('Kapora ödendi olarak işaretlendi')
+      loadReservations()
+    } catch {
+      toast.error('İşlem başarısız')
+    }
+  }
+
   const handleCodeSearch = async () => {
     const code = codeQuery.trim().toUpperCase()
     if (!code) {
@@ -260,7 +270,7 @@ export const ReservationsPage: React.FC = () => {
 
         {/* Status filter */}
         <div className="flex gap-1.5 px-5 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface)] overflow-x-auto">
-          {(['all', 'confirmed', 'completed'] as const).map((s) => (
+          {(['all', 'pending', 'confirmed', 'completed'] as const).map((s) => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={cn(
                 'px-3 py-1.5 rounded-xl text-xs font-medium font-body whitespace-nowrap transition-all duration-200 border',
@@ -332,7 +342,7 @@ export const ReservationsPage: React.FC = () => {
                           <span className="flex items-center gap-1 text-amber-400">
                             <DollarSign size={10} />
                             {formatCurrency(res.deposit)} kapora
-                            {res.depositPaid ? ' ✓' : ' (ödenmedi)'}
+                            {res.depositPaid ? ' (ödendi)' : ' (ödenmedi)'}
                           </span>
                         )}
                       </div>
@@ -354,6 +364,12 @@ export const ReservationsPage: React.FC = () => {
                         <button onClick={() => handleStatusChange(res.id, 'confirmed')}
                           className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors text-xs font-body">
                           Onayla
+                        </button>
+                      )}
+                      {!!res.deposit && !res.depositPaid && !res.depositRefunded && res.status !== 'cancelled' && (
+                        <button onClick={() => handleMarkDepositPaid(res)}
+                          className="px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-body">
+                          Kapora Öde
                         </button>
                       )}
                       <button onClick={() => { setEditReservation(res); setModalOpen(true) }}
