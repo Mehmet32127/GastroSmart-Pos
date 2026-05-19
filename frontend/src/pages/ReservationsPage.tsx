@@ -101,6 +101,16 @@ export const ReservationsPage: React.FC = () => {
     }
   }
 
+  const handleComplete = async (res: Reservation) => {
+    try {
+      await reservationsApi.updateStatus(res.id, 'completed')
+      toast.success('Rezervasyon tamamlandı')
+      loadReservations()
+    } catch {
+      toast.error('İşlem başarısız')
+    }
+  }
+
   const handleCodeSearch = async () => {
     const code = codeQuery.trim().toUpperCase()
     if (!code) {
@@ -374,6 +384,12 @@ export const ReservationsPage: React.FC = () => {
                         <button onClick={() => handleApprove(res)}
                           className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors text-xs font-body">
                           Onayla
+                        </button>
+                      )}
+                      {(res.status === 'confirmed' || res.status === 'seated') && (
+                        <button onClick={() => handleComplete(res)}
+                          className="px-2 py-1 rounded-lg bg-[var(--color-surface2)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] transition-colors text-xs font-body">
+                          Tamamlandı
                         </button>
                       )}
                       <button onClick={() => { setEditReservation(res); setModalOpen(true) }}
