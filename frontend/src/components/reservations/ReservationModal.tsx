@@ -261,6 +261,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           <Input
             label="Tarih *"
             type="date"
+            min={new Date().toISOString().split('T')[0]}
             error={errors.date?.message}
             {...register('date')}
           />
