@@ -350,6 +350,12 @@ export const ReservationsPage: React.FC = () => {
                           İade
                         </button>
                       )}
+                      {res.status === 'pending' && (
+                        <button onClick={() => handleStatusChange(res.id, 'confirmed')}
+                          className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors text-xs font-body">
+                          Onayla
+                        </button>
+                      )}
                       <button onClick={() => { setEditReservation(res); setModalOpen(true) }}
                         className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] transition-colors">
                         <Edit2 size={14} />
