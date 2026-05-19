@@ -91,6 +91,16 @@ export const ReservationsPage: React.FC = () => {
     }
   }
 
+  const handleApprove = async (res: Reservation) => {
+    try {
+      await reservationsApi.updateStatus(res.id, 'confirmed', { depositPaid: true })
+      toast.success('Rezervasyon onaylandı, kapora ödendi')
+      loadReservations()
+    } catch {
+      toast.error('İşlem başarısız')
+    }
+  }
+
   const handleCodeSearch = async () => {
     const code = codeQuery.trim().toUpperCase()
     if (!code) {
@@ -361,7 +371,7 @@ export const ReservationsPage: React.FC = () => {
                         </button>
                       )}
                       {res.status === 'pending' && (
-                        <button onClick={() => handleStatusChange(res.id, 'confirmed')}
+                        <button onClick={() => handleApprove(res)}
                           className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors text-xs font-body">
                           Onayla
                         </button>
