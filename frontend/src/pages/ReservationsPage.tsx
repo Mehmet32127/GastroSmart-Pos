@@ -376,12 +376,6 @@ export const ReservationsPage: React.FC = () => {
                           Onayla
                         </button>
                       )}
-                      {!!res.deposit && !res.depositPaid && !res.depositRefunded && res.status !== 'cancelled' && res.status !== 'pending' && (
-                        <button onClick={() => handleMarkDepositPaid(res)}
-                          className="px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-body">
-                          Kapora Öde
-                        </button>
-                      )}
                       <button onClick={() => { setEditReservation(res); setModalOpen(true) }}
                         className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] transition-colors">
                         <Edit2 size={14} />
