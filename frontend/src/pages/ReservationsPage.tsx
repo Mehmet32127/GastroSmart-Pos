@@ -376,7 +376,7 @@ export const ReservationsPage: React.FC = () => {
                           Onayla
                         </button>
                       )}
-                      {!!res.deposit && !res.depositPaid && !res.depositRefunded && res.status !== 'cancelled' && (
+                      {!!res.deposit && !res.depositPaid && !res.depositRefunded && res.status !== 'cancelled' && res.status !== 'pending' && (
                         <button onClick={() => handleMarkDepositPaid(res)}
                           className="px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-body">
                           Kapora Öde
