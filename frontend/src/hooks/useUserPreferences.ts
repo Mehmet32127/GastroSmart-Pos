@@ -1,8 +1,25 @@
 import { useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { usePreferencesStore, getEffectiveTheme } from '@/store/preferencesStore'
+import { useThemeStore } from '@/store/themeStore'
 import toast from 'react-hot-toast'
 import type { UserPreferences } from '@/types'
+
+// Light mode'da kaldırılacak inline style property'ler.
+// themeStore restoran teması için bunları inline koyar, ama inline styles
+// CSS selector'lerini override eder — kullanıcı light seçince CSS
+// [data-theme="light"] cascade'i çalışmaz. Light mode'da bu inline'lar
+// kaldırılır, dark'a dönünce themeStore.applyTheme() ile geri konur.
+// Accent (--color-accent, --color-accent-text) restoran marka rengi olduğu
+// için her iki modda korunur, sadece bg/surface/text alanları temizlenir.
+const LIGHT_OVERRIDE_PROPS = [
+  '--color-bg',
+  '--color-surface',
+  '--color-surface2',
+  '--color-border',
+  '--color-text',
+  '--color-text-muted',
+]
 
 /**
  * Kişisel UI tercihleri hook'u — Zustand store wrapper.
@@ -28,9 +45,18 @@ export function useUserPreferences() {
 
   const effectiveTheme = getEffectiveTheme(prefs.theme)
 
-  // HTML'e data-theme attribute uygula (CSS variables bunu okur)
+  // HTML'e data-theme attribute uygula + themeStore çakışmasını çöz.
+  // BUG FIX: themeStore inline --color-bg vb. set ediyordu → CSS [data-theme="light"]
+  // override edemiyordu → light mode hiç görünmüyordu. Light'ta inline'ları kaldır,
+  // CSS cascade çalışsın; Dark'a dönünce themeStore'u tekrar uygula.
   useEffect(() => {
-    document.documentElement.dataset.theme = effectiveTheme
+    const root = document.documentElement
+    root.dataset.theme = effectiveTheme
+    if (effectiveTheme === 'light') {
+      LIGHT_OVERRIDE_PROPS.forEach((p) => root.style.removeProperty(p))
+    } else {
+      useThemeStore.getState().applyTheme()
+    }
   }, [effectiveTheme])
 
   // System mode → OS değişimi (prefers-color-scheme) gerçek zamanlı yakala

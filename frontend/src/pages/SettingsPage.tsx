@@ -506,7 +506,7 @@ const ProfileSettingsCard: React.FC = () => {
         </div>
         <div className="flex-1">
           <p className="text-xs text-[var(--color-text-muted)] font-body mb-2">
-            Profil fotoğrafı — JPG/PNG/WebP, max 2 MB
+            Profil fotoğrafı — JPG/PNG/WebP, max 1 MB
           </p>
           <div className="flex flex-wrap gap-2">
             <input
