@@ -63,6 +63,11 @@ export const adminApi = {
   login: (email: string, password: string) =>
     adminClient.post<{ success: boolean; data: { token: string; email: string } }>('/login', { email, password }),
 
+  // Aktif süper-admin oturumunda şifre re-confirmation.
+  // Hassas okuma (slug görüntüleme vb.) öncesi side-effect'siz doğrulama.
+  verifyPassword: (password: string) =>
+    adminClient.post<{ success: boolean; data: { ok: boolean } }>('/verify-password', { password }),
+
   listTenants: () =>
     adminClient.get<{ success: boolean; data: Tenant[] }>('/tenants'),
 

@@ -39,6 +39,7 @@ export const UsersPage: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [resetPwId, setResetPwId] = useState<string | null>(null)
   const [newPw, setNewPw] = useState('')
+  const [submitting, setSubmitting] = useState(false)  // Çift tıklama önleme + UX
   const isEdit = !!editUser
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<UserForm>({
@@ -68,6 +69,8 @@ export const UsersPage: React.FC = () => {
   }
 
   const onSubmit = async (data: UserForm) => {
+    if (submitting) return  // Çift tıklamada race condition önle
+    setSubmitting(true)
     try {
       if (isEdit && editUser) {
         const { password, ...rest } = data
@@ -82,6 +85,8 @@ export const UsersPage: React.FC = () => {
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
       toast.error(e?.response?.data?.error || 'İşlem başarısız')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -204,11 +209,13 @@ export const UsersPage: React.FC = () => {
         </div>
       )}
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}
+      <Modal isOpen={modalOpen} onClose={() => !submitting && setModalOpen(false)}
         title={isEdit ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı'} size="md"
         footer={<>
-          <Button variant="secondary" onClick={() => setModalOpen(false)}>İptal</Button>
-          <Button onClick={handleSubmit(onSubmit)}>{isEdit ? 'Güncelle' : 'Oluştur'}</Button>
+          <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={submitting}>İptal</Button>
+          <Button onClick={handleSubmit(onSubmit)} loading={submitting} disabled={submitting}>
+            {submitting ? (isEdit ? 'Güncelleniyor...' : 'Oluşturuluyor...') : (isEdit ? 'Güncelle' : 'Oluştur')}
+          </Button>
         </>}>
         <form className="space-y-3">
           <div className="grid grid-cols-2 gap-3">

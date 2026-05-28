@@ -157,7 +157,11 @@ export const SettingsPage: React.FC = () => {
       window.dispatchEvent(new CustomEvent('settings:updated'))
 
       if (profileUpdated && !requireRelogin) {
-        useAuthStore.getState().setUser(profileUpdated)
+        // BUG FIX: setUser(profileUpdated) tüm objeyi değiştirip avatarData/avatarUrl'i
+        // siliyordu. Mevcut user üzerine MERGE et — backend cevabında olmayan alanlar
+        // (avatar gibi) kaybolmasın.
+        const currentUser = useAuthStore.getState().user
+        useAuthStore.getState().setUser({ ...currentUser, ...profileUpdated })
       }
 
       toast.success(requireRelogin
@@ -444,9 +448,9 @@ const ProfileSettingsCard: React.FC = () => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Backend limit ile eşleşmeli (500 KB) — büyükse hiç yükleme deneme
-    if (file.size > 500 * 1024) {
-      toast.error(`Dosya çok büyük: ${Math.round(file.size / 1024)} KB. Maksimum 500 KB.`)
+    // Backend limit ile eşleşmeli (1 MB) — büyükse hiç yükleme deneme
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error(`Dosya çok büyük: ${(file.size / 1024 / 1024).toFixed(1)} MB. Maksimum 1 MB.`)
       return
     }
 

@@ -17,9 +17,13 @@ export const AdminDashboardPage: React.FC = () => {
   const [togglingSlug, setTogglingSlug] = useState<string | null>(null)
   const [seedingSlug, setSeedingSlug] = useState<string | null>(null)
   // Re-auth modal: kritik işlem öncesi süper-admin şifre onayı
-  const [reAuth, setReAuth] = useState<{ tenant: Tenant; action: 'seed' | 'deactivate' } | null>(null)
+  const [reAuth, setReAuth] = useState<{ tenant: Tenant; action: 'seed' | 'deactivate' | 'reveal' } | null>(null)
   const [reAuthPwd, setReAuthPwd] = useState('')
   const [reAuthLoading, setReAuthLoading] = useState(false)
+  // Slug görüntüleme — şifreyle açılan tenant'lar ve sona erme zamanı.
+  // 30 sn sonra otomatik maskelenir.
+  const [revealedSlugs, setRevealedSlugs] = useState<Map<string, number>>(new Map())
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
   const [showReAuthPwd, setShowReAuthPwd] = useState(false)
   const [resetForTenant, setResetForTenant] = useState<Tenant | null>(null)
   const [resetResult, setResetResult] = useState<{
@@ -76,10 +80,16 @@ export const AdminDashboardPage: React.FC = () => {
         const res = await adminApi.seedDemo(tenant.slug, reAuthPwd)
         const d = res.data.data
         toast.success(`${d.itemsAdded} ürün, ${d.tablesAdded} masa, ${d.categoriesAdded} kategori eklendi`)
-      } else {
+      } else if (action === 'deactivate') {
         await adminApi.deleteTenant(tenant.slug, reAuthPwd)
         toast.success(`${tenant.name} pasifleştirildi`)
         await load()
+      } else if (action === 'reveal') {
+        // Sadece şifre doğrulama — side effect yok. 30 sn açık kalır.
+        await adminApi.verifyPassword(reAuthPwd)
+        const expiry = Date.now() + 30 * 1000
+        setRevealedSlugs(prev => new Map(prev).set(tenant.slug, expiry))
+        toast.success('Kod 30 saniye boyunca görünür')
       }
       setReAuth(null)
       setReAuthPwd('')
@@ -88,6 +98,33 @@ export const AdminDashboardPage: React.FC = () => {
     } finally {
       setReAuthLoading(false)
     }
+  }
+
+  // 30 sn sonra revealed slug'ları otomatik gizle — her saniye expiry kontrol.
+  useEffect(() => {
+    if (revealedSlugs.size === 0) return
+    const interval = setInterval(() => {
+      const now = Date.now()
+      setRevealedSlugs(prev => {
+        const next = new Map<string, number>()
+        let changed = false
+        prev.forEach((expiry, slug) => {
+          if (expiry > now) next.set(slug, expiry)
+          else changed = true
+        })
+        return changed ? next : prev
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [revealedSlugs.size])
+
+  // Slug'ı panoya kopyala
+  const handleCopySlug = async (slug: string) => {
+    try {
+      await navigator.clipboard.writeText(slug)
+      setCopiedSlug(slug)
+      setTimeout(() => setCopiedSlug(null), 2000)
+    } catch { toast.error('Kopyalanamadı') }
   }
 
   return (
@@ -139,9 +176,28 @@ export const AdminDashboardPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <p className="font-semibold text-[var(--color-text)] font-body">{t.name}</p>
-                      <span className="font-mono text-xs text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-2 py-0.5 rounded-md">
-                        /{t.slug}
-                      </span>
+                      {revealedSlugs.has(t.slug) ? (
+                        <span className="inline-flex items-center gap-1 font-mono text-xs text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-2 py-0.5 rounded-md">
+                          /{t.slug}
+                          <button
+                            type="button"
+                            onClick={() => handleCopySlug(t.slug)}
+                            className="ml-1 text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
+                            title="Kopyala"
+                          >
+                            {copiedSlug === t.slug ? <Check size={12} /> : <Copy size={12} />}
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setReAuth({ tenant: t, action: 'reveal' }); setReAuthPwd('') }}
+                          className="inline-flex items-center gap-1 font-mono text-xs text-[var(--color-text-muted)] bg-[var(--color-surface2)] hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)] px-2 py-0.5 rounded-md transition-colors"
+                          title="Restoran kodunu göster (şifre gerekir)"
+                        >
+                          /••••• <Eye size={12} />
+                        </button>
+                      )}
                       <Badge variant={t.active ? 'success' : 'muted'} dot>
                         {t.active ? 'Aktif' : 'Pasif'}
                       </Badge>
@@ -211,12 +267,12 @@ export const AdminDashboardPage: React.FC = () => {
         <Modal
           isOpen={true}
           onClose={() => { if (!reAuthLoading) { setReAuth(null); setReAuthPwd(''); setShowReAuthPwd(false) } }}
-          title={reAuth.action === 'seed' ? 'Demo Doldur' : 'Restoranı Pasifleştir'}
+          title={reAuth.action === 'seed' ? 'Demo Doldur' : reAuth.action === 'reveal' ? 'Restoran Kodunu Göster' : 'Restoranı Pasifleştir'}
           size="sm"
           footer={<>
             <Button variant="secondary" onClick={() => { setReAuth(null); setReAuthPwd(''); setShowReAuthPwd(false) }} disabled={reAuthLoading}>İptal</Button>
             <Button onClick={handleReAuthConfirm} loading={reAuthLoading} disabled={!reAuthPwd}>
-              {reAuth.action === 'seed' ? 'Demo Doldur' : 'Pasifleştir'}
+              {reAuth.action === 'seed' ? 'Demo Doldur' : reAuth.action === 'reveal' ? 'Göster' : 'Pasifleştir'}
             </Button>
           </>}
         >
@@ -228,6 +284,11 @@ export const AdminDashboardPage: React.FC = () => {
                   <>
                     <p><strong>{reAuth.tenant.name}</strong> restoranına ~100 demo ürün ve masalar eklenecek.</p>
                     <p>Mevcut veriler silinmez, üzerine eklenir.</p>
+                  </>
+                ) : reAuth.action === 'reveal' ? (
+                  <>
+                    <p><strong>{reAuth.tenant.name}</strong> restoranının kodu 30 saniye boyunca görünür.</p>
+                    <p>Süre dolunca otomatik olarak tekrar gizlenir.</p>
                   </>
                 ) : (
                   <>
