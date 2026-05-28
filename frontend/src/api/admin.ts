@@ -66,9 +66,16 @@ export const adminApi = {
   listTenants: () =>
     adminClient.get<{ success: boolean; data: Tenant[] }>('/tenants'),
 
-  // Public — auth gerektirmez. Login dropdown'ında kullanılır.
-  listPublicTenants: () =>
-    adminClient.get<{ success: boolean; data: { slug: string; name: string }[] }>('/tenants/public/list'),
+  // Public — auth gerektirmez. Login formunda kullanıcı restoran kodunu
+  // yazınca doğrulama için çağırılır. Sadece "bu slug aktif mi?" sorusuna
+  // boolean döner; tenant listesini sızdırmaz.
+  //
+  // GÜVENLİK: Eski `listPublicTenants` (tüm restoranları dökendi) kaldırıldı —
+  // rakiplerin müşteri listesi enumerasyonu yapma riskini ortadan kaldırdı.
+  checkTenantExists: (slug: string) =>
+    adminClient.get<{ success: boolean; data: { exists: boolean; name: string | null } }>(
+      `/tenants/public/exists/${encodeURIComponent(slug)}`
+    ),
 
   createTenant: (data: CreateTenantPayload) =>
     adminClient.post<{ success: boolean; data: CreateTenantResponse; message?: string }>('/tenants', data),

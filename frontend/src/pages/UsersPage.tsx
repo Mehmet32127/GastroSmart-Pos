@@ -14,9 +14,9 @@ import toast from 'react-hot-toast'
 
 const ROLE_CONFIG: Record<UserRole, { label: string; badge: 'default' | 'success' | 'warning' | 'info'; desc: string }> = {
   admin:   { label: 'Sahibi',  badge: 'default', desc: 'Tüm yetkiler' },
-  manager: { label: 'Müdür',   badge: 'warning', desc: 'Raporlar, menü, ayarlar (sipariş açmaz)' },
-  cashier: { label: 'Kasiyer', badge: 'info',    desc: 'Sipariş aç/kapat, ödeme, masa transfer' },
-  waiter:  { label: 'Garson',  badge: 'success', desc: 'Sipariş açma + kalem ekleme' },
+  manager: { label: 'Müdür',   badge: 'warning', desc: 'Raporlar, menü, ayarlar + ödeme sonrası iptal' },
+  cashier: { label: 'Kasiyer', badge: 'info',    desc: 'Sadece ödeme alır (hesap kapat / hesap böl)' },
+  waiter:  { label: 'Garson',  badge: 'success', desc: 'Sadece sipariş alır (aç, ekle, iptal)' },
 }
 
 const userSchema = z.object({

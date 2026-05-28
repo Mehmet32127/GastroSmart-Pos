@@ -1,8 +1,9 @@
 // ─── Auth ───────────────────────────────────────────────────────────────────
-// admin   : Sahibi — her şey
-// manager : Müdür — denetim/raporlar/menü, sipariş AÇMAZ/KAPATMAZ
-// cashier : Kasiyer — sipariş aç/kapat/öde, masa transfer
-// waiter  : Garson — sipariş aç/kalem ekle, masa durumu
+// İŞ KURALI: her rol KENDİ işinden sorumlu.
+// admin   : Sahibi — tüm yetkiler
+// manager : Müdür — denetim/raporlar/menü + ödeme sonrası iptal (void)
+// cashier : Kasiyer — SADECE ödeme alır (hesap kapat, hesap böl)
+// waiter  : Garson — SADECE sipariş alır (aç, ürün ekle/değiştir/sil, iptal)
 export type UserRole = 'admin' | 'manager' | 'cashier' | 'waiter'
 
 // UI'da gösterilen Türkçe rol etiketleri — tek noktadan yönetim

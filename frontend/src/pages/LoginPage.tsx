@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, Lock, User, Wifi, WifiOff } from 'lucide-react'
+import { Eye, EyeOff, Lock, User, Wifi, WifiOff, Store, Check, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useOfflineQueue } from '@/hooks/useOfflineQueue'
+import { adminApi } from '@/api/admin'
 
 const schema = z.object({
   tenantSlug: z.string().optional(),
@@ -15,10 +16,12 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>
 
-// Önceden başarıyla giriş yapılmış tenant'ı hatırla (hızlandırma için).
-// Backend tenantSlug verilmediğinde tüm tenant'larda otomatik arar; ama
-// kayıtlı slug varsa direkt o tenant'a yönlenir (saniyeler hızlı).
-const TENANT_SLUG_KEY = 'gastro_tenant_slug'
+// Slug doğrulama durumu — kullanıcıya "✓ Demo Restoran" gibi teyit göstermek için
+type SlugCheck =
+  | { status: 'idle' }
+  | { status: 'checking' }
+  | { status: 'valid'; name: string }
+  | { status: 'invalid' }
 
 export const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuth()
@@ -27,26 +30,58 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate()
   const [showPw, setShowPw]   = useState(false)
   const [focused, setFocused] = useState<string | null>(null)
+  const [slugCheck, setSlugCheck] = useState<SlugCheck>({ status: 'idle' })
+  const slugCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // URL'de slug varsa (örn /r/zexra/login) onu kullan, aksi halde
-  // auto-discover (backend tüm tenantlarda paralel arar).
-  // KASITLI: localStorage cache KULLANILMIYOR — kullanıcı farklı restorana
-  // giriş yapabilsin diye. Tek tarayıcıdan birden fazla restorana erişim açık.
+  // URL'de slug varsa (örn /r/zexra/login) onu kullan; aksi halde kullanıcı
+  // giriş formunda restoran kodunu kendisi yazar.
   const formSlug = urlSlug ?? ''
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { tenantSlug: formSlug },
   })
 
+  const slugValue = watch('tenantSlug') ?? ''
+
+  // Restoran kodu yazıldıkça debounce ile "geçerli mi?" doğrulaması.
+  // Kullanıcı yanlış yazarsa daha submit etmeden uyarır + doğru yazarsa
+  // restoranın görünür adıyla teyit eder.
+  useEffect(() => {
+    if (slugCheckTimer.current) clearTimeout(slugCheckTimer.current)
+    const slug = slugValue.toLowerCase().trim()
+    if (!slug) {
+      setSlugCheck({ status: 'idle' })
+      return
+    }
+    // Format hızlı ön-kontrol — backend regex'iyle aynı
+    if (!/^[a-z][a-z0-9-]{1,30}$/.test(slug)) {
+      setSlugCheck({ status: 'invalid' })
+      return
+    }
+    setSlugCheck({ status: 'checking' })
+    slugCheckTimer.current = setTimeout(async () => {
+      try {
+        const { data } = await adminApi.checkTenantExists(slug)
+        if (data.data.exists) {
+          setSlugCheck({ status: 'valid', name: data.data.name ?? slug })
+        } else {
+          setSlugCheck({ status: 'invalid' })
+        }
+      } catch {
+        // Ağ hatası — sessizce idle'a dön, kullanıcıyı engelleme
+        setSlugCheck({ status: 'idle' })
+      }
+    }, 400)
+    return () => {
+      if (slugCheckTimer.current) clearTimeout(slugCheckTimer.current)
+    }
+  }, [slugValue])
+
   const onSubmit = (data: FormData) => {
-    // tenantSlug sadece URL'den (/r/{slug}/login) gelirse gönderilir.
-    // Aksi halde undefined → backend auto-discover yapar (kullanıcı + şifre eşleşmesi
-    // bir tenant'ta bulunursa o tenant'a login). Username/şifre kombinasyonu
-    // restoranlar arası benzersizse, sistem doğru restorana yönlendirir.
     login({
       ...data,
-      tenantSlug: (data.tenantSlug?.trim() || undefined),
+      tenantSlug: (data.tenantSlug?.trim().toLowerCase() || undefined),
     })
   }
 
@@ -89,9 +124,49 @@ export const LoginPage: React.FC = () => {
         {/* Card */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-card">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Cihaz daha önce hangi restorana giriş yapmışsa onu hatırlar
-                (hızlandırma). Yoksa backend username+şifreden otomatik bulur. */}
-            <input type="hidden" {...register('tenantSlug')} />
+            {/* Restoran Kodu — URL'de slug yoksa kullanıcı kendi yazar.
+                URL'den geldiyse (/r/{slug}/login) prefill + readonly. */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-[var(--color-text-muted)] font-body">
+                Restoran Kodu
+              </label>
+              <div className={`relative flex items-center transition-all duration-200 rounded-xl border ${
+                focused === 'tenantSlug'
+                  ? 'border-[var(--color-accent)]/50 shadow-[0_0_0_3px_var(--color-accent)/10]'
+                  : slugCheck.status === 'invalid' ? 'border-red-500/40'
+                  : slugCheck.status === 'valid'   ? 'border-green-500/40'
+                  : 'border-[var(--color-border)]'
+              }`}>
+                <div className="absolute left-3 text-[var(--color-text-muted)]"><Store size={16} /></div>
+                <input
+                  {...register('tenantSlug')}
+                  type="text"
+                  autoComplete="organization"
+                  placeholder="restoran-kodu"
+                  readOnly={!!urlSlug}
+                  onFocus={() => setFocused('tenantSlug')}
+                  onBlur={() => setFocused(null)}
+                  className="w-full bg-[var(--color-surface2)] rounded-xl pl-10 pr-10 py-3 text-sm font-body text-[var(--color-text)] placeholder-[var(--color-text-muted)]/40 focus:outline-none lowercase"
+                />
+                <div className="absolute right-3">
+                  {slugCheck.status === 'checking' && (
+                    <svg className="animate-spin h-4 w-4 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  )}
+                  {slugCheck.status === 'valid'   && <Check size={16} className="text-green-400" />}
+                  {slugCheck.status === 'invalid' && <X size={16} className="text-red-400" />}
+                </div>
+              </div>
+              {slugCheck.status === 'valid'   && <p className="text-xs text-green-400 font-body">✓ {slugCheck.name}</p>}
+              {slugCheck.status === 'invalid' && <p className="text-xs text-red-400 font-body">Bu restoran kodu bulunamadı</p>}
+              {slugCheck.status === 'idle' && !urlSlug && (
+                <p className="text-xs text-[var(--color-text-muted)]/60 font-body">
+                  Restoran sahibinizin verdiği kodu girin
+                </p>
+              )}
+            </div>
 
             {/* Username */}
             <div className="space-y-1.5">
