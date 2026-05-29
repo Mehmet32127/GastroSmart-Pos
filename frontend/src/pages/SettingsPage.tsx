@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Save, Building2, Phone, FileText, Globe, Receipt, Printer, Download, UserCircle, Camera, Trash2, Sun, Moon, Monitor, Volume2, VolumeX, Keyboard } from 'lucide-react'
+import { Save, Building2, Phone, FileText, Globe, Receipt, Printer, Download, UserCircle, Camera, Trash2, Sun, Moon, Monitor, Volume2, VolumeX, Keyboard, Lock } from 'lucide-react'
 import { Card } from '@/components/ui/common'
 import { Button } from '@/components/ui/Button'
 import { settingsApi } from '@/api/settings'
@@ -24,6 +24,63 @@ interface SettingsData {
 
 const CURRENCIES = ['TRY', 'USD', 'EUR', 'GBP']
 const TIMEZONES  = ['Europe/Istanbul', 'Europe/London', 'Europe/Berlin', 'America/New_York']
+
+// Kilit ekranı PIN'i belirleme/değiştirme/kaldırma kartı
+function PinSettingsCard() {
+  const { user } = useAuthStore()
+  const { refreshUser } = useAuth()
+  const [pin, setPin] = useState('')
+  const [pw, setPw] = useState('')
+  const [busy, setBusy] = useState(false)
+  const hasPin = !!user?.hasPin
+
+  const submit = async (remove: boolean) => {
+    if (!remove && !/^\d{4,6}$/.test(pin)) { toast.error('PIN 4-6 haneli rakam olmalı'); return }
+    if (!pw) { toast.error('Mevcut şifren gerekli'); return }
+    setBusy(true)
+    try {
+      await authApi.setPin(remove ? null : pin, pw)
+      toast.success(remove ? 'PIN kaldırıldı' : 'PIN kaydedildi')
+      setPin(''); setPw('')
+      await refreshUser()
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'İşlem başarısız')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <Card>
+      <h2 className="text-sm font-semibold font-display text-[var(--color-text)] mb-1 flex items-center gap-2">
+        <Lock size={16} className="text-[var(--color-accent)]" /> Kilit Ekranı PIN'i
+      </h2>
+      <p className="text-xs text-[var(--color-text-muted)] font-body mb-4">
+        Ekran kilidini hızlı açmak için 4-6 haneli PIN.{' '}
+        {hasPin ? 'Şu an PIN tanımlı.' : 'Henüz tanımlı değil — kilit şifreyle açılıyor.'}
+      </p>
+      <div className="space-y-3 max-w-xs">
+        <input
+          inputMode="numeric" value={pin} maxLength={6}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder={hasPin ? 'Yeni PIN (4-6 hane)' : 'PIN (4-6 hane)'}
+          className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm font-mono tracking-widest text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
+        />
+        <input
+          type="password" value={pw} onChange={(e) => setPw(e.target.value)}
+          placeholder="Mevcut şifren (doğrulama)" autoComplete="current-password"
+          className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm font-body text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)]/50"
+        />
+        <div className="flex gap-2">
+          <Button onClick={() => submit(false)} loading={busy} disabled={busy}>
+            {hasPin ? 'PIN Değiştir' : 'PIN Belirle'}
+          </Button>
+          {hasPin && (
+            <Button variant="secondary" onClick={() => submit(true)} disabled={busy}>Kaldır</Button>
+          )}
+        </div>
+      </div>
+    </Card>
+  )
+}
 
 export const SettingsPage: React.FC = () => {
   const [data, setData] = useState<SettingsData>({
@@ -249,6 +306,9 @@ export const SettingsPage: React.FC = () => {
 
       {/* Profil Fotoğrafı + Kişisel Tercihler */}
       <ProfileSettingsCard />
+
+      {/* Kilit Ekranı PIN'i */}
+      <PinSettingsCard />
 
       {/* Restoran Logosu — sadece admin değiştirebilir */}
       <RestaurantLogoCard />

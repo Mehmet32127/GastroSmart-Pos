@@ -24,6 +24,14 @@ export const authApi = {
   verifyPassword: (password: string) =>
     client.post<ApiResponse>('/auth/verify-password', { password }),
 
+  // Lock screen için: PIN doğrula (token üretmez)
+  verifyPin: (pin: string) =>
+    client.post<ApiResponse>('/auth/verify-pin', { pin }),
+
+  // PIN belirle/değiştir (null = kaldır). Mevcut şifre doğrulaması gerekir.
+  setPin: (pin: string | null, currentPassword: string) =>
+    client.put<ApiResponse<{ hasPin: boolean }>>('/auth/pin', { pin, currentPassword }),
+
   // Kişisel tercihler (tema, ses, kısayollar)
   updatePreferences: (prefs: Partial<{
     theme: 'dark' | 'light' | 'system'

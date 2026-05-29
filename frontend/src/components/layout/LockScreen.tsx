@@ -3,7 +3,6 @@ import { Lock, Eye, EyeOff, LogOut } from 'lucide-react'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { getInitials } from '@/utils/format'
-import toast from 'react-hot-toast'
 
 /**
  * Lock Screen — paylaşımlı bilgisayar/tablet senaryosu için.
@@ -19,7 +18,9 @@ interface LockScreenProps {
 
 export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
   const { user, clearAuth } = useAuthStore()
+  const [mode, setMode] = useState<'pin' | 'password'>(user?.hasPin ? 'pin' : 'password')
   const [password, setPassword] = useState('')
+  const [pin, setPin] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,19 +29,23 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
   useEffect(() => {
     // Açılır açılmaz input'a odakla
     inputRef.current?.focus()
-  }, [])
+  }, [mode])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!password.trim()) {
-      setError('Şifre gerekli')
+    const isPin = mode === 'pin'
+    const value = isPin ? pin : password
+    if (!value.trim()) {
+      setError(isPin ? 'PIN gerekli' : 'Şifre gerekli')
       return
     }
     setSubmitting(true)
     setError(null)
     try {
-      await authApi.verifyPassword(password)
+      if (isPin) await authApi.verifyPin(pin)
+      else await authApi.verifyPassword(password)
       setPassword('')
+      setPin('')
       onUnlock()
     } catch (err: any) {
       const status = err?.response?.status
@@ -48,15 +53,20 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
       if (status === 423) {
         setError(msg || 'Hesap geçici olarak kilitli')
       } else if (status === 401) {
-        setError('Şifre hatalı')
+        setError(isPin ? 'PIN hatalı' : 'Şifre hatalı')
       } else {
         setError('Doğrulanamadı')
       }
+      setPin('')
       setPassword('')
       inputRef.current?.focus()
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const switchMode = (m: 'pin' | 'password') => {
+    setMode(m); setError(null); setPin(''); setPassword('')
   }
 
   const handleLogout = () => {
@@ -90,32 +100,49 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
         {/* Kilit ikonu + açıklama */}
         <div className="flex items-center justify-center gap-2 text-[var(--color-text-muted)]">
           <Lock size={14} />
-          <span className="text-xs font-body">Ekran kilitlendi. Şifrenizi girin.</span>
+          <span className="text-xs font-body">
+            {mode === 'pin' ? 'Ekran kilitlendi. PIN girin.' : 'Ekran kilitlendi. Şifrenizi girin.'}
+          </span>
         </div>
 
-        {/* Şifre formu */}
+        {/* Form — PIN veya şifre */}
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="relative">
+          {mode === 'pin' ? (
             <input
               ref={inputRef}
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(null) }}
-              placeholder="Şifre"
-              autoComplete="current-password"
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              value={pin}
+              maxLength={6}
+              onChange={(e) => { setPin(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(null) }}
+              placeholder="••••"
               disabled={submitting}
-              className="w-full px-4 py-3 pr-12 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)]/50 focus:outline-none focus:border-[var(--color-accent)]/50 font-body disabled:opacity-50"
+              className="w-full px-4 py-4 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl text-center text-2xl tracking-[0.5em] text-[var(--color-text)] placeholder-[var(--color-text-muted)]/40 focus:outline-none focus:border-[var(--color-accent)]/50 font-mono disabled:opacity-50"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(s => !s)}
-              tabIndex={-1}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-              aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
+          ) : (
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(null) }}
+                placeholder="Şifre"
+                autoComplete="current-password"
+                disabled={submitting}
+                className="w-full px-4 py-3 pr-12 bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)]/50 focus:outline-none focus:border-[var(--color-accent)]/50 font-body disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(s => !s)}
+                tabIndex={-1}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="text-xs text-red-400 font-body text-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
@@ -125,11 +152,22 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
 
           <button
             type="submit"
-            disabled={submitting || !password.trim()}
+            disabled={submitting || !(mode === 'pin' ? pin : password).trim()}
             className="w-full py-3 rounded-xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-sm font-bold font-display hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           >
             {submitting ? 'Doğrulanıyor...' : 'Kilidi Aç'}
           </button>
+
+          {/* PIN tanımlıysa iki yöntem arası geçiş (PIN unutulursa şifre) */}
+          {user?.hasPin && (
+            <button
+              type="button"
+              onClick={() => switchMode(mode === 'pin' ? 'password' : 'pin')}
+              className="w-full text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors font-body"
+            >
+              {mode === 'pin' ? 'Şifre ile aç' : 'PIN ile aç'}
+            </button>
+          )}
         </form>
 
         {/* Logout — başka kullanıcı kullanacaksa */}

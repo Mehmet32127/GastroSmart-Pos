@@ -34,6 +34,8 @@ export interface User {
   preferences?: UserPreferences
   avatarData?: string | null   // Base64 data URL — yeni, kalıcı
   avatarUrl?: string | null    // Legacy — geriye uyumluluk
+  hasPin?: boolean             // Kilit ekranı PIN'i tanımlı mı
+  lastLogin?: string | null
 }
 
 export interface AuthTokens {
