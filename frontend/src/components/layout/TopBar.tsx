@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Search, Bell, Wifi, WifiOff, TrendingUp, X, Check, CheckCheck, Menu, Sun, Moon, Volume2, VolumeX } from 'lucide-react'
+import { Search, Bell, Wifi, WifiOff, TrendingUp, X, Check, CheckCheck, Menu, Sun, Moon, Volume2, VolumeX, AlertTriangle } from 'lucide-react'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
 import { useSound } from '@/hooks/useSound'
+import { useOperationalAlerts } from '@/hooks/useOperationalAlerts'
 import { cn, formatCurrency, formatRelative, getInitials } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
 import { CONFIG } from '@/config'
@@ -22,6 +23,8 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const { user } = useAuthStore()
   const { notifications, unreadCount, markRead, markAllRead } = useNotificationStore()
+  const alerts = useOperationalAlerts()
+  const badgeCount = unreadCount + alerts.length
   const { prefs, effectiveTheme, setTheme, toggleSound } = useUserPreferences()
   const { play: playSound } = useSound()
   const [searchOpen, setSearchOpen] = useState(false)
@@ -178,9 +181,12 @@ export const TopBar: React.FC<TopBarProps> = ({
           className="relative p-2 rounded-xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)] transition-colors"
         >
           <Bell size={18} />
-          {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full bg-[var(--color-accent)] text-[var(--color-accent-text)] text-[9px] font-bold flex items-center justify-center animate-bounce-in">
-              {unreadCount > 99 ? '99+' : unreadCount}
+          {badgeCount > 0 && (
+            <span className={cn(
+              'absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center animate-bounce-in',
+              alerts.length > 0 ? 'bg-red-500 text-white' : 'bg-[var(--color-accent)] text-[var(--color-accent-text)]'
+            )}>
+              {badgeCount > 99 ? '99+' : badgeCount}
             </span>
           )}
         </button>
@@ -206,10 +212,27 @@ export const TopBar: React.FC<TopBarProps> = ({
               )}
             </div>
             <div className="max-h-80 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="py-8 text-center text-sm text-[var(--color-text-muted)] font-body">
-                  Bildirim yok
+              {/* Aktif operasyonel uyarılar (canlı, eşik bazlı) */}
+              {alerts.length > 0 && (
+                <div className="border-b border-[var(--color-border)] bg-amber-500/5">
+                  <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wide text-[var(--color-text-muted)] font-mono">Aktif Uyarılar</p>
+                  {alerts.map((a) => (
+                    <div key={a.id} className="flex items-start gap-3 px-4 py-2.5">
+                      <AlertTriangle size={14} className={cn('mt-0.5 flex-shrink-0', a.severity === 'danger' ? 'text-red-400' : 'text-amber-400')} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold font-body text-[var(--color-text)]">{a.title}</p>
+                        <p className="text-xs text-[var(--color-text-muted)] font-body line-clamp-2">{a.message}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+              )}
+              {notifications.length === 0 ? (
+                alerts.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-[var(--color-text-muted)] font-body">
+                    Bildirim yok
+                  </div>
+                ) : null
               ) : (
                 notifications.slice(0, 20).map((n) => (
                   <button

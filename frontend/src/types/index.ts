@@ -238,6 +238,14 @@ export interface ReportsOverview {
   recentOrders: RecentOrder[]
 }
 
+// ─── Operasyonel uyarılar (canlı hesaplanan, eşik bazlı) ─────────────────────
+export interface OperationalAlert {
+  id: string                              // sabit anahtar (dedup için)
+  severity: 'warning' | 'danger' | 'info'
+  title: string
+  message: string
+}
+
 // ─── Notifications ───────────────────────────────────────────────────────────
 export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'order'
 
