@@ -774,16 +774,16 @@ export const ReportsPage: React.FC = () => {
         {overview && <ProfitItemsWidget items={overview.topProfit} />}
       </div>
 
-      {/* Canlı son işlemler — full width */}
-      {overview && <RecentOrdersWidget orders={overview.recentOrders} />}
+      {/* Son işlemler | Garson performansı — yan yana */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        {overview && <RecentOrdersWidget orders={overview.recentOrders} />}
 
-      {/* Garson performansı — full width */}
-      {waiters.length > 0 && (
+        {waiters.length > 0 && (
         <Card padding="md">
           <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-4 flex items-center gap-2">
             <Crown size={16} className="text-amber-400" fill="currentColor" /> Garson Performansı
           </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
+          <div className="space-y-4">
             {(waiters as WaiterPerformance[]).slice(0, 6).map((w, i) => {
               const topRevenue = (waiters[0] as WaiterPerformance)?.totalRevenue || 0
               const share = topRevenue ? (w.totalRevenue / topRevenue) * 100 : 0
@@ -826,7 +826,8 @@ export const ReportsPage: React.FC = () => {
             })}
           </div>
         </Card>
-      )}
+        )}
+      </div>
     </div>
   )
 }
