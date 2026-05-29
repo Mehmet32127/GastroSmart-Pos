@@ -181,6 +181,11 @@ export interface WaiterPerformance {
   totalRevenue: number
   averageOrderValue: number
   avgServiceTime: number
+  totalGuests: number
+  revenuePerGuest: number
+  itemsSold: number
+  cancelledItems: number
+  cancelRate: number
 }
 
 export interface HourlySales {

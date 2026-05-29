@@ -5,6 +5,7 @@ import { Card, Spinner } from '@/components/ui/common'
 import { reportsApi } from '@/api/reports'
 import { menuApi } from '@/api/menu'
 import { formatCurrency } from '@/utils/format'
+import type { WaiterPerformance } from '@/types'
 import toast from 'react-hot-toast'
 
 const COLORS = ['#f59e0b','#22c55e','#3b82f6','#a78bfa','#ef4444','#ec4899','#14b8a6','#f97316','#64748b','#e11d48']
@@ -340,28 +341,57 @@ export const ReportsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Garson performansı */}
+          {/* Garson performansı — sıralı liderlik tablosu + detaylı metrikler */}
           {waiters.length > 0 && (
             <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
               <h4 className="text-xs font-semibold text-[var(--color-text-muted)] font-body mb-3">GARSON PERFORMANSI</h4>
-              <div className="space-y-2.5">
-                {waiters.slice(0, 4).map((w: any, i: number) => (
-                  <div key={w.waiterId} className="flex items-center gap-3">
-                    <span className="text-xs text-[var(--color-text-muted)] font-mono w-4">{i + 1}</span>
-                    <div className="flex-1">
-                      <div className="flex justify-between mb-1">
-                        <span className="text-xs font-medium text-[var(--color-text)] font-body">{w.waiterName}</span>
-                        <span className="text-xs font-mono text-[var(--color-accent)]">{formatCurrency(w.totalRevenue)}</span>
+              <div className="space-y-3">
+                {(waiters as WaiterPerformance[]).slice(0, 5).map((w, i) => {
+                  const topRevenue = (waiters[0] as WaiterPerformance)?.totalRevenue || 0
+                  const share = topRevenue ? (w.totalRevenue / topRevenue) * 100 : 0
+                  return (
+                    <div key={w.waiterId}>
+                      {/* Üst satır: sıra/madalya + isim + ciro */}
+                      <div className="flex items-center gap-2.5 mb-1">
+                        <span className="w-5 text-center text-sm leading-none">
+                          {i === 0 ? '🏆' : (
+                            <span className="text-xs text-[var(--color-text-muted)] font-mono">{i + 1}</span>
+                          )}
+                        </span>
+                        <span className="flex-1 text-xs font-medium text-[var(--color-text)] font-body truncate">
+                          {w.waiterName || '—'}
+                        </span>
+                        <span className="text-xs font-mono font-semibold text-[var(--color-accent)]">
+                          {formatCurrency(w.totalRevenue)}
+                        </span>
                       </div>
-                      <div className="h-1.5 bg-[var(--color-surface2)] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{
-                          width: `${waiters[0] ? (w.totalRevenue / waiters[0].totalRevenue) * 100 : 0}%`,
-                          background: COLORS[i % COLORS.length]
+
+                      {/* Ciro payı barı */}
+                      <div className="h-1.5 bg-[var(--color-surface2)] rounded-full overflow-hidden ml-7">
+                        <div className="h-full rounded-full transition-all" style={{
+                          width: `${share}%`,
+                          background: COLORS[i % COLORS.length],
                         }} />
                       </div>
+
+                      {/* Detaylı metrik chip'leri */}
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 ml-7 text-[10px] font-mono text-[var(--color-text-muted)]">
+                        <span title="Sipariş sayısı">🧾 {w.totalOrders}</span>
+                        <span title="Toplam misafir">👥 {w.totalGuests}</span>
+                        <span title="Ortalama adisyon">Ø {formatCurrency(w.averageOrderValue)}</span>
+                        <span title="Kişi başı ciro">/kişi {formatCurrency(w.revenuePerGuest)}</span>
+                        <span title="Satılan ürün adedi">📦 {w.itemsSold}</span>
+                        <span title="Ortalama servis süresi">⏱ {w.avgServiceTime ? Math.round(w.avgServiceTime) : 0} dk</span>
+                        <span
+                          title="İptal oranı"
+                          className={w.cancelRate > 10 ? 'text-red-500 font-semibold' : ''}
+                        >
+                          ✕ %{(w.cancelRate ?? 0).toFixed(1)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
