@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
-import { Download, TrendingUp, ShoppingBag, DollarSign, ArrowLeft } from 'lucide-react'
+import { Download, TrendingUp, ShoppingBag, DollarSign, ArrowLeft, Crown, Receipt, Users, Package, Clock, Ban } from 'lucide-react'
 import { Card, Spinner } from '@/components/ui/common'
 import { reportsApi } from '@/api/reports'
 import { menuApi } from '@/api/menu'
@@ -19,6 +19,34 @@ const PERIODS: { key: Period; label: string }[] = [
 ]
 
 const MONTH_NAMES = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara']
+
+// Dakikayı okunur süreye çevir: 45 → "45dk", 870 → "14s 30dk"
+function fmtDuration(min: number): string {
+  const m = Math.round(min || 0)
+  if (m <= 0) return '—'
+  if (m < 60) return `${m}dk`
+  const h = Math.floor(m / 60)
+  const r = m % 60
+  return r ? `${h}s ${r}dk` : `${h}s`
+}
+
+// Garson kartındaki tek metrik rozeti
+const WaiterStat: React.FC<{
+  icon: React.ReactNode
+  value: React.ReactNode
+  label: string
+  danger?: boolean
+}> = ({ icon, value, label, danger }) => (
+  <span
+    title={label}
+    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[var(--color-surface2)] text-[10px] font-mono whitespace-nowrap ${
+      danger ? 'text-red-500 font-semibold' : 'text-[var(--color-text-muted)]'
+    }`}
+  >
+    <span className="opacity-70 shrink-0">{icon}</span>
+    {value}
+  </span>
+)
 
 export const ReportsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
@@ -352,42 +380,39 @@ export const ReportsPage: React.FC = () => {
                   return (
                     <div key={w.waiterId}>
                       {/* Üst satır: sıra/madalya + isim + ciro */}
-                      <div className="flex items-center gap-2.5 mb-1">
-                        <span className="w-5 text-center text-sm leading-none">
-                          {i === 0 ? '🏆' : (
+                      <div className="flex items-center gap-2.5 mb-1.5">
+                        <span className="w-5 flex items-center justify-center shrink-0">
+                          {i === 0 ? (
+                            <Crown size={15} className="text-amber-400" fill="currentColor" />
+                          ) : (
                             <span className="text-xs text-[var(--color-text-muted)] font-mono">{i + 1}</span>
                           )}
                         </span>
-                        <span className="flex-1 text-xs font-medium text-[var(--color-text)] font-body truncate">
+                        <span className="flex-1 text-sm font-semibold text-[var(--color-text)] font-body truncate">
                           {w.waiterName || '—'}
                         </span>
-                        <span className="text-xs font-mono font-semibold text-[var(--color-accent)]">
+                        <span className="text-sm font-mono font-bold text-[var(--color-accent)]">
                           {formatCurrency(w.totalRevenue)}
                         </span>
                       </div>
 
                       {/* Ciro payı barı */}
                       <div className="h-1.5 bg-[var(--color-surface2)] rounded-full overflow-hidden ml-7">
-                        <div className="h-full rounded-full transition-all" style={{
+                        <div className="h-full rounded-full transition-all duration-500" style={{
                           width: `${share}%`,
                           background: COLORS[i % COLORS.length],
                         }} />
                       </div>
 
-                      {/* Detaylı metrik chip'leri */}
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 ml-7 text-[10px] font-mono text-[var(--color-text-muted)]">
-                        <span title="Sipariş sayısı">🧾 {w.totalOrders}</span>
-                        <span title="Toplam misafir">👥 {w.totalGuests}</span>
-                        <span title="Ortalama adisyon">Ø {formatCurrency(w.averageOrderValue)}</span>
-                        <span title="Kişi başı ciro">/kişi {formatCurrency(w.revenuePerGuest)}</span>
-                        <span title="Satılan ürün adedi">📦 {w.itemsSold}</span>
-                        <span title="Ortalama servis süresi">⏱ {w.avgServiceTime ? Math.round(w.avgServiceTime) : 0} dk</span>
-                        <span
-                          title="İptal oranı"
-                          className={w.cancelRate > 10 ? 'text-red-500 font-semibold' : ''}
-                        >
-                          ✕ %{(w.cancelRate ?? 0).toFixed(1)}
-                        </span>
+                      {/* Detaylı metrik rozetleri */}
+                      <div className="flex flex-wrap gap-1.5 mt-2 ml-7">
+                        <WaiterStat icon={<Receipt size={11} />} value={w.totalOrders} label="Sipariş sayısı" />
+                        <WaiterStat icon={<Users size={11} />} value={w.totalGuests} label="Toplam misafir" />
+                        <WaiterStat icon={<Package size={11} />} value={w.itemsSold} label="Satılan ürün adedi" />
+                        <WaiterStat icon={<DollarSign size={11} />} value={formatCurrency(w.averageOrderValue)} label="Ortalama adisyon" />
+                        <WaiterStat icon={<Users size={11} />} value={`${formatCurrency(w.revenuePerGuest)}/kişi`} label="Kişi başı ciro" />
+                        <WaiterStat icon={<Clock size={11} />} value={fmtDuration(w.avgServiceTime)} label="Ortalama servis süresi" />
+                        <WaiterStat icon={<Ban size={11} />} value={`%${(w.cancelRate ?? 0).toFixed(1)}`} label="İptal oranı" danger={w.cancelRate > 10} />
                       </div>
                     </div>
                   )
