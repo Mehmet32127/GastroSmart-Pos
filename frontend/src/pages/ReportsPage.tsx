@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
-import { Download, TrendingUp, ShoppingBag, DollarSign, ArrowLeft, Crown, Receipt, Users, Package, Clock, Ban } from 'lucide-react'
+import { Download, TrendingUp, ShoppingBag, DollarSign, ArrowLeft, Crown, Receipt, Users, Package, Clock, Ban, Flame, LayoutGrid, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react'
 import { Card, Spinner } from '@/components/ui/common'
 import { reportsApi } from '@/api/reports'
 import { menuApi } from '@/api/menu'
 import { formatCurrency } from '@/utils/format'
-import type { WaiterPerformance } from '@/types'
+import type { WaiterPerformance, ReportsOverview, TableStats, LowStockItem } from '@/types'
 import toast from 'react-hot-toast'
 
 const COLORS = ['#f59e0b','#22c55e','#3b82f6','#a78bfa','#ef4444','#ec4899','#14b8a6','#f97316','#64748b','#e11d48']
@@ -48,6 +48,180 @@ const WaiterStat: React.FC<{
   </span>
 )
 
+// KPI kartı — opsiyonel "dün'e göre %% değişim" trend oku ile
+const KpiCard: React.FC<{
+  icon: React.ReactNode
+  label: string
+  value: string
+  color: string
+  trend?: number | null
+}> = ({ icon, label, value, color, trend }) => (
+  <Card>
+    <div className="flex items-start justify-between">
+      <div className="min-w-0">
+        <p className="text-xs text-[var(--color-text-muted)] font-body mb-1 truncate">{label}</p>
+        <p className={`text-xl font-bold font-mono ${color}`}>{value}</p>
+        {trend != null && isFinite(trend) && (
+          <p className={`text-[10px] font-mono mt-1 flex items-center gap-0.5 ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {trend >= 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+            %{Math.abs(trend).toFixed(0)}
+            <span className="text-[var(--color-text-muted)]">dün</span>
+          </p>
+        )}
+      </div>
+      <div className={`p-2 rounded-xl bg-[var(--color-surface2)] ${color} shrink-0`}>{icon}</div>
+    </div>
+  </Card>
+)
+
+// En çok satan ürünler — yatay bar listesi
+const TopItemsWidget: React.FC<{ items: { name: string; count: number; revenue: number }[] }> = ({ items }) => {
+  const max = items[0]?.count || 1
+  return (
+    <Card padding="md">
+      <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-3 flex items-center gap-2">
+        <Flame size={15} className="text-[var(--color-accent)]" /> En Çok Satanlar
+      </h3>
+      {items.length > 0 ? (
+        <div className="space-y-2.5">
+          {items.slice(0, 8).map((it, i) => (
+            <div key={i}>
+              <div className="flex justify-between mb-1 text-xs gap-2">
+                <span className="text-[var(--color-text)] font-body truncate">{i + 1}. {it.name}</span>
+                <span className="font-mono text-[var(--color-text-muted)] shrink-0 whitespace-nowrap">
+                  {it.count} adet · <span className="text-[var(--color-accent)]">{formatCurrency(it.revenue)}</span>
+                </span>
+              </div>
+              <div className="h-1.5 bg-[var(--color-surface2)] rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${(it.count / max) * 100}%`, background: COLORS[i % COLORS.length] }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-[var(--color-text-muted)] text-center py-10 font-body">Satış verisi yok</p>
+      )}
+    </Card>
+  )
+}
+
+// Ödeme dağılımı satırı
+const PayRow: React.FC<{ color: string; label: string; value: number; pct: number }> = ({ color, label, value, pct }) => (
+  <div className="flex items-center gap-2 text-xs">
+    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+    <span className="text-[var(--color-text)] font-body flex-1">{label}</span>
+    <span className="font-mono text-[var(--color-text-muted)]">%{pct.toFixed(0)}</span>
+    <span className="font-mono text-[var(--color-accent)] w-24 text-right">{formatCurrency(value)}</span>
+  </div>
+)
+
+// Ödeme dağılımı — nakit/kart donut
+const PaymentDonut: React.FC<{ cash: number; card: number }> = ({ cash, card }) => {
+  const total = cash + card
+  const data = [{ name: 'Nakit', value: cash }, { name: 'Kart', value: card }].filter(d => d.value > 0)
+  const cols = ['#22c55e', '#a78bfa']
+  return (
+    <Card padding="md">
+      <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-3 flex items-center gap-2">
+        <DollarSign size={15} className="text-[var(--color-accent)]" /> Ödeme Dağılımı
+      </h3>
+      {total > 0 ? (
+        <>
+          <div className="flex justify-center my-2">
+            <PieChart width={160} height={160}>
+              <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={72} paddingAngle={2} isAnimationActive={false}>
+                {data.map((_, i) => <Cell key={i} fill={cols[i]} stroke="none" />)}
+              </Pie>
+            </PieChart>
+          </div>
+          <div className="space-y-2 mt-2">
+            <PayRow color={cols[0]} label="Nakit" value={cash} pct={(cash / total) * 100} />
+            <PayRow color={cols[1]} label="Kart" value={card} pct={(card / total) * 100} />
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-[var(--color-text-muted)] text-center py-10 font-body">Ödeme verisi yok</p>
+      )}
+    </Card>
+  )
+}
+
+// Masa doluluk halkası + bugünkü devir
+const TablesWidget: React.FC<{ tables: TableStats; turnover: number; closedToday: number }> = ({ tables, turnover, closedToday }) => {
+  const segs = [
+    { label: 'Dolu', value: tables.occupied, color: '#ef4444' },
+    { label: 'Boş', value: tables.available, color: '#22c55e' },
+    { label: 'Rezerve', value: tables.reserved, color: '#f59e0b' },
+    { label: 'Temizlik', value: tables.cleaning, color: '#3b82f6' },
+  ]
+  const pie = segs.filter(s => s.value > 0)
+  return (
+    <Card padding="md">
+      <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-3 flex items-center gap-2">
+        <LayoutGrid size={15} className="text-[var(--color-accent)]" /> Masa Doluluk & Devir
+      </h3>
+      <div className="flex items-center gap-4">
+        <div className="relative w-[120px] h-[120px] shrink-0">
+          {tables.total > 0 ? (
+            <PieChart width={120} height={120}>
+              <Pie data={pie} dataKey="value" cx="50%" cy="50%" innerRadius={42} outerRadius={56} paddingAngle={2} isAnimationActive={false}>
+                {pie.map((s, i) => <Cell key={i} fill={s.color} stroke="none" />)}
+              </Pie>
+            </PieChart>
+          ) : null}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-lg font-bold font-mono text-[var(--color-text)]">%{tables.occupancyRate.toFixed(0)}</span>
+            <span className="text-[9px] text-[var(--color-text-muted)] font-body">doluluk</span>
+          </div>
+        </div>
+        <div className="flex-1 space-y-1.5">
+          {segs.map((s, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+              <span className="text-[var(--color-text)] font-body flex-1">{s.label}</span>
+              <span className="font-mono text-[var(--color-text-muted)]">{s.value}</span>
+            </div>
+          ))}
+          <div className="pt-1.5 mt-1 border-t border-[var(--color-border)] flex items-center justify-between text-xs">
+            <span className="text-[var(--color-text-muted)] font-body">Bugün devir</span>
+            <span className="font-mono text-[var(--color-accent)] font-bold">
+              {turnover.toFixed(1)}x <span className="text-[var(--color-text-muted)] font-normal">({closedToday})</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// Düşük stok uyarıları
+const LowStockWidget: React.FC<{ items: LowStockItem[] }> = ({ items }) => (
+  <Card padding="md">
+    <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-3 flex items-center gap-2">
+      <AlertTriangle size={15} className="text-amber-400" /> Düşük Stok Uyarıları
+      {items.length > 0 && <span className="ml-auto text-xs font-mono text-amber-400">{items.length}</span>}
+    </h3>
+    {items.length > 0 ? (
+      <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+        {items.map((it, i) => {
+          const out = it.stock_quantity <= 0
+          return (
+            <div key={i} className="flex items-center justify-between py-1.5 border-b border-[var(--color-border)]/40">
+              <span className="text-xs text-[var(--color-text)] font-body truncate pr-2">{it.name}</span>
+              <span className={`text-xs font-mono shrink-0 ${out ? 'text-red-500 font-semibold' : 'text-amber-400'}`}>
+                {out ? 'TÜKENDİ' : `${it.stock_quantity} ${it.unit}`}
+                <span className="text-[var(--color-text-muted)] font-normal"> / min {it.min_stock}</span>
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    ) : (
+      <p className="text-sm text-[var(--color-text-muted)] text-center py-10 font-body">✓ Tüm stoklar yeterli</p>
+    )}
+  </Card>
+)
+
 export const ReportsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [period, setPeriod] = useState<Period>('daily')
@@ -55,6 +229,9 @@ export const ReportsPage: React.FC = () => {
   const [weekly, setWeekly] = useState<any[]>([])
   const [hourly, setHourly] = useState<any[]>([])
   const [waiters, setWaiters] = useState<any[]>([])
+  const [overview, setOverview] = useState<ReportsOverview | null>(null)
+  const [yesterday, setYesterday] = useState<any>(null)
+  const [topItems, setTopItems] = useState<{ name: string; count: number; revenue: number }[]>([])
   const [exporting, setExporting] = useState<string | null>(null)
 
   // Monthly / yearly picker state
@@ -76,18 +253,24 @@ export const ReportsPage: React.FC = () => {
     const load = async () => {
       setIsLoading(true)
       try {
-        const [d, w, h, wa, ti, cats] = await Promise.all([
+        const yStr = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+        const [d, w, h, wa, ti, cats, ov, yd] = await Promise.all([
           reportsApi.getDailySummary(),
           reportsApi.getWeeklySummary(),
           reportsApi.getHourlySales(),
           reportsApi.getWaiterPerformance(),
           reportsApi.getTopItems({ limit: 100 }),
           menuApi.getCategories(),
+          reportsApi.getOverview(),
+          reportsApi.getDailySummary(yStr),
         ])
         setDaily(d.data.data || null)
         setWeekly(w.data.data || [])
         setHourly(h.data.data || [])
         setWaiters(wa.data.data || [])
+        setOverview(ov.data.data || null)
+        setYesterday(yd.data.data || null)
+        setTopItems((ti.data.data as any[]) || [])
 
         const catList: any[] = cats.data.data || []
         setCategories(catList)
@@ -194,6 +377,13 @@ export const ReportsPage: React.FC = () => {
 
   const selectedCat = categories.find((c: any) => c.id === selectedCatId)
 
+  // KPI yardımcıları: dün'e göre trend + günün en yoğun saati
+  const pct = (now: number, prev: number) => (prev > 0 ? ((now - prev) / prev) * 100 : null)
+  const revTrend = daily && yesterday ? pct(daily.totalRevenue || 0, yesterday.totalRevenue || 0) : null
+  const ordTrend = daily && yesterday ? pct(daily.totalOrders || 0, yesterday.totalOrders || 0) : null
+  const peakHour = hourly.length ? hourly.reduce((a: any, b: any) => (b.revenue > a.revenue ? b : a), hourly[0]) : null
+  const peakLabel = peakHour && peakHour.revenue > 0 ? `${peakHour.hour}:00` : '—'
+
   if (isLoading) return <div className="flex items-center justify-center h-full"><Spinner size={40} /></div>
 
   return (
@@ -215,33 +405,20 @@ export const ReportsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Özet kartlar */}
+      {/* Özet kartlar (6) — ciro & sipariş kartlarında dün'e göre trend */}
       {daily && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            { icon: <TrendingUp size={18}/>, label: 'Günlük Ciro', value: formatCurrency(daily.totalRevenue || 0), color: 'text-[var(--color-accent)]' },
-            { icon: <ShoppingBag size={18}/>, label: 'Sipariş', value: String(daily.totalOrders || 0), color: 'text-blue-400' },
-            { icon: <DollarSign size={18}/>, label: 'Nakit', value: formatCurrency(daily.cashRevenue || 0), color: 'text-green-400' },
-            { icon: <DollarSign size={18}/>, label: 'Kart', value: formatCurrency(daily.cardRevenue || 0), color: 'text-purple-400' },
-          ].map((s, i) => (
-            <Card key={i}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-[var(--color-text-muted)] font-body mb-1">{s.label}</p>
-                  <p className={`text-xl font-bold font-mono ${s.color}`}>{s.value}</p>
-                </div>
-                <div className={`p-2 rounded-xl bg-[var(--color-surface2)] ${s.color}`}>{s.icon}</div>
-              </div>
-            </Card>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <KpiCard icon={<TrendingUp size={18} />} label="Günlük Ciro" value={formatCurrency(daily.totalRevenue || 0)} color="text-[var(--color-accent)]" trend={revTrend} />
+          <KpiCard icon={<ShoppingBag size={18} />} label="Sipariş" value={String(daily.totalOrders || 0)} color="text-blue-400" trend={ordTrend} />
+          <KpiCard icon={<Receipt size={18} />} label="Ort. Adisyon" value={formatCurrency(daily.averageOrderValue || 0)} color="text-cyan-400" />
+          <KpiCard icon={<DollarSign size={18} />} label="Nakit" value={formatCurrency(daily.cashRevenue || 0)} color="text-green-400" />
+          <KpiCard icon={<DollarSign size={18} />} label="Kart" value={formatCurrency(daily.cardRevenue || 0)} color="text-purple-400" />
+          <KpiCard icon={<Clock size={18} />} label="En Yoğun Saat" value={peakLabel} color="text-amber-400" />
         </div>
       )}
 
-      {/* Ana içerik */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-        {/* Sol: Satış grafiği */}
-        <Card className="lg:col-span-2" padding="md">
+      {/* Satış grafiği — full width */}
+      <Card padding="md">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <h3 className="text-sm font-semibold font-display text-[var(--color-text)]">
               {period === 'daily' ? 'Saatlik Satış' : period === 'weekly' ? 'Haftalık Satış' : period === 'monthly' ? 'Aylık Satış' : 'Yıllık Satış'}
@@ -369,60 +546,12 @@ export const ReportsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Garson performansı — sıralı liderlik tablosu + detaylı metrikler */}
-          {waiters.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
-              <h4 className="text-xs font-semibold text-[var(--color-text-muted)] font-body mb-3">GARSON PERFORMANSI</h4>
-              <div className="space-y-3">
-                {(waiters as WaiterPerformance[]).slice(0, 5).map((w, i) => {
-                  const topRevenue = (waiters[0] as WaiterPerformance)?.totalRevenue || 0
-                  const share = topRevenue ? (w.totalRevenue / topRevenue) * 100 : 0
-                  return (
-                    <div key={w.waiterId}>
-                      {/* Üst satır: sıra/madalya + isim + ciro */}
-                      <div className="flex items-center gap-2.5 mb-1.5">
-                        <span className="w-5 flex items-center justify-center shrink-0">
-                          {i === 0 ? (
-                            <Crown size={15} className="text-amber-400" fill="currentColor" />
-                          ) : (
-                            <span className="text-xs text-[var(--color-text-muted)] font-mono">{i + 1}</span>
-                          )}
-                        </span>
-                        <span className="flex-1 text-sm font-semibold text-[var(--color-text)] font-body truncate">
-                          {w.waiterName || '—'}
-                        </span>
-                        <span className="text-sm font-mono font-bold text-[var(--color-accent)]">
-                          {formatCurrency(w.totalRevenue)}
-                        </span>
-                      </div>
-
-                      {/* Ciro payı barı */}
-                      <div className="h-1.5 bg-[var(--color-surface2)] rounded-full overflow-hidden ml-7">
-                        <div className="h-full rounded-full transition-all duration-500" style={{
-                          width: `${share}%`,
-                          background: COLORS[i % COLORS.length],
-                        }} />
-                      </div>
-
-                      {/* Detaylı metrik rozetleri */}
-                      <div className="flex flex-wrap gap-1.5 mt-2 ml-7">
-                        <WaiterStat icon={<Receipt size={11} />} value={w.totalOrders} label="Sipariş sayısı" />
-                        <WaiterStat icon={<Users size={11} />} value={w.totalGuests} label="Toplam misafir" />
-                        <WaiterStat icon={<Package size={11} />} value={w.itemsSold} label="Satılan ürün adedi" />
-                        <WaiterStat icon={<DollarSign size={11} />} value={formatCurrency(w.averageOrderValue)} label="Ortalama adisyon" />
-                        <WaiterStat icon={<Users size={11} />} value={`${formatCurrency(w.revenuePerGuest)}/kişi`} label="Kişi başı ciro" />
-                        <WaiterStat icon={<Clock size={11} />} value={fmtDuration(w.avgServiceTime)} label="Ortalama servis süresi" />
-                        <WaiterStat icon={<Ban size={11} />} value={`%${(w.cancelRate ?? 0).toFixed(1)}`} label="İptal oranı" danger={w.cancelRate > 10} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
         </Card>
 
-        {/* Sağ: Kategori pasta grafik */}
+      {/* 3'lü grid: Kategori dağılımı | En çok satanlar | Ödeme dağılımı */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Kategori pasta grafik (boyut sabit) */}
         <Card padding="md">
           <div className="flex items-center gap-2 mb-3">
             {selectedCatId && (
@@ -492,7 +621,69 @@ export const ReportsPage: React.FC = () => {
             )
           )}
         </Card>
+
+        <TopItemsWidget items={topItems} />
+        <PaymentDonut cash={daily?.cashRevenue || 0} card={daily?.cardRevenue || 0} />
       </div>
+
+      {/* 2'li grid: Masa doluluk | Düşük stok */}
+      {overview && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <TablesWidget tables={overview.tables} turnover={overview.turnover} closedToday={overview.closedToday} />
+          <LowStockWidget items={overview.lowStock} />
+        </div>
+      )}
+
+      {/* Garson performansı — full width */}
+      {waiters.length > 0 && (
+        <Card padding="md">
+          <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-4 flex items-center gap-2">
+            <Crown size={16} className="text-amber-400" fill="currentColor" /> Garson Performansı
+          </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
+            {(waiters as WaiterPerformance[]).slice(0, 6).map((w, i) => {
+              const topRevenue = (waiters[0] as WaiterPerformance)?.totalRevenue || 0
+              const share = topRevenue ? (w.totalRevenue / topRevenue) * 100 : 0
+              return (
+                <div key={w.waiterId}>
+                  <div className="flex items-center gap-2.5 mb-1.5">
+                    <span className="w-5 flex items-center justify-center shrink-0">
+                      {i === 0 ? (
+                        <Crown size={15} className="text-amber-400" fill="currentColor" />
+                      ) : (
+                        <span className="text-xs text-[var(--color-text-muted)] font-mono">{i + 1}</span>
+                      )}
+                    </span>
+                    <span className="flex-1 text-sm font-semibold text-[var(--color-text)] font-body truncate">
+                      {w.waiterName || '—'}
+                    </span>
+                    <span className="text-sm font-mono font-bold text-[var(--color-accent)]">
+                      {formatCurrency(w.totalRevenue)}
+                    </span>
+                  </div>
+
+                  <div className="h-1.5 bg-[var(--color-surface2)] rounded-full overflow-hidden ml-7">
+                    <div className="h-full rounded-full transition-all duration-500" style={{
+                      width: `${share}%`,
+                      background: COLORS[i % COLORS.length],
+                    }} />
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 mt-2 ml-7">
+                    <WaiterStat icon={<Receipt size={11} />} value={w.totalOrders} label="Sipariş sayısı" />
+                    <WaiterStat icon={<Users size={11} />} value={w.totalGuests} label="Toplam misafir" />
+                    <WaiterStat icon={<Package size={11} />} value={w.itemsSold} label="Satılan ürün adedi" />
+                    <WaiterStat icon={<DollarSign size={11} />} value={formatCurrency(w.averageOrderValue)} label="Ortalama adisyon" />
+                    <WaiterStat icon={<Users size={11} />} value={`${formatCurrency(w.revenuePerGuest)}/kişi`} label="Kişi başı ciro" />
+                    <WaiterStat icon={<Clock size={11} />} value={fmtDuration(w.avgServiceTime)} label="Ortalama servis süresi" />
+                    <WaiterStat icon={<Ban size={11} />} value={`%${(w.cancelRate ?? 0).toFixed(1)}`} label="İptal oranı" danger={w.cancelRate > 10} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
     </div>
   )
 }

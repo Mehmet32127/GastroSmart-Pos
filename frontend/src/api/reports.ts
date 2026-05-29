@@ -1,9 +1,12 @@
 import client from './client'
-import type { DailySummary, WaiterPerformance, HourlySales, ApiResponse } from '@/types'
+import type { DailySummary, WaiterPerformance, HourlySales, ReportsOverview, ApiResponse } from '@/types'
 
 export const reportsApi = {
   getDailySummary: (date?: string) =>
     client.get<ApiResponse<DailySummary>>('/reports/daily', { params: { date } }),
+
+  getOverview: () =>
+    client.get<ApiResponse<ReportsOverview>>('/reports/overview'),
 
   getWeeklySummary: (startDate?: string) =>
     client.get<ApiResponse<DailySummary[]>>('/reports/weekly', { params: { startDate } }),

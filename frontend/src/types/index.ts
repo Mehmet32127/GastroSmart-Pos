@@ -194,6 +194,29 @@ export interface HourlySales {
   orders: number
 }
 
+export interface TableStats {
+  total: number
+  available: number
+  occupied: number
+  reserved: number
+  cleaning: number
+  occupancyRate: number
+}
+
+export interface LowStockItem {
+  name: string
+  stock_quantity: number
+  min_stock: number
+  unit: string
+}
+
+export interface ReportsOverview {
+  tables: TableStats
+  turnover: number
+  closedToday: number
+  lowStock: LowStockItem[]
+}
+
 // ─── Notifications ───────────────────────────────────────────────────────────
 export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'order'
 
