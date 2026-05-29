@@ -214,7 +214,8 @@ export interface ProfitItem {
   name: string
   revenue: number
   profit: number
-  margin: number
+  margin: number | null
+  hasCost?: boolean
 }
 
 export interface RecentOrder {

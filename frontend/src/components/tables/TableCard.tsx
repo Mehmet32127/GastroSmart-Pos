@@ -57,8 +57,13 @@ export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected
   const cfg  = STATUS_CONFIG[table.status]
   const sz   = SIZE_CONFIG[cardSize]
 
-  // Uzun süre açık kalan masa uyarısı — 90 dk+ dolu masa "ilgilenilmeli" sinyali
-  const openMin  = table.openedAt ? Math.floor((Date.now() - new Date(table.openedAt).getTime()) / 60000) : 0
+  // Uzun süre açık kalan masa uyarısı — 90 dk+ dolu masa "ilgilenilmeli" sinyali.
+  // Tarih normalizasyonu: bazı tarayıcılar "YYYY-MM-DD HH:MM" (boşluklu) formatı
+  // NaN okur → 'T' ekle (OrdersPage ile tutarlı).
+  const openedMs = table.openedAt
+    ? new Date(table.openedAt.includes('T') ? table.openedAt : table.openedAt.replace(' ', 'T')).getTime()
+    : 0
+  const openMin  = openedMs ? Math.floor((Date.now() - openedMs) / 60000) : 0
   const longOpen = table.status === 'occupied' && openMin >= 90
 
   const handleClick = () => {

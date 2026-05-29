@@ -294,7 +294,11 @@ const ProfitItemsWidget: React.FC<{ items: ProfitItem[] }> = ({ items }) => {
                 <span className="text-[var(--color-text)] font-body truncate">{i + 1}. {it.name}</span>
                 <span className="font-mono shrink-0 whitespace-nowrap">
                   <span className="text-green-400">{formatCurrency(it.profit)}</span>
-                  <span className="text-[var(--color-text-muted)]"> · %{it.margin.toFixed(0)}</span>
+                  {it.margin != null ? (
+                    <span className="text-[var(--color-text-muted)]"> · %{it.margin.toFixed(0)}</span>
+                  ) : (
+                    <span className="text-[var(--color-text-muted)]" title="Maliyet girilmemiş — marj hesaplanamıyor"> · marj —</span>
+                  )}
                 </span>
               </div>
               <div className="h-1.5 bg-[var(--color-surface2)] rounded-full overflow-hidden">
@@ -518,6 +522,15 @@ export const ReportsPage: React.FC = () => {
   const peakHour = hourly.length ? hourly.reduce((a: any, b: any) => (b.revenue > a.revenue ? b : a), hourly[0]) : null
   const peakLabel = peakHour && peakHour.revenue > 0 ? `${peakHour.hour}:00` : '—'
 
+  // Günlük KPI'lar bugün satış yoksa son satış gününe düşer (backend fallback).
+  // Bu durumu kullanıcıya açıkça bildir ki "bugünün cirosu" sanılmasın.
+  const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Istanbul' }).format(new Date())
+  const showingPastDay = !!daily?.date && daily.date !== todayStr
+  const fmtDay = (d: string) => {
+    const [, m, day] = d.split('-')
+    return `${parseInt(day)} ${MONTH_NAMES[parseInt(m) - 1] ?? ''}`
+  }
+
   if (isLoading) return <div className="flex items-center justify-center h-full"><Spinner size={40} /></div>
 
   return (
@@ -538,6 +551,14 @@ export const ReportsPage: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Bugün satış yoksa: KPI'ların son satış gününe ait olduğunu açıkça belirt */}
+      {showingPastDay && daily?.date && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 font-body">
+          <CalendarDays size={13} className="shrink-0" />
+          Bugün henüz satış yok — aşağıdaki günlük özet son satış gününe ait: <b>{fmtDay(daily.date)}</b>
+        </div>
+      )}
 
       {/* Özet kartlar (6) — ciro & sipariş kartlarında dün'e göre trend */}
       {daily && (

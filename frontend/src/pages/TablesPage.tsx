@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Search, RefreshCw, LayoutGrid, List, Plus, Edit2, Trash2,
-  Settings, ChevronDown, Tag, ZoomIn, ZoomOut,
+  Settings, ChevronDown, Tag,
 } from 'lucide-react'
 import { TableCard } from '@/components/tables/TableCard'
 import { OrderPanel } from '@/components/orders/OrderPanel'
@@ -14,7 +14,7 @@ import { useOrderStore } from '@/store/orderStore'
 import { useSocket } from '@/hooks/useSocket'
 import { useAuthStore } from '@/store/authStore'
 import { cn, formatCurrency } from '@/utils/format'
-import type { Table, Order } from '@/types'
+import type { Table } from '@/types'
 import toast from 'react-hot-toast'
 
 const STATUS_FILTERS = [
@@ -144,10 +144,6 @@ export const TablesPage: React.FC = () => {
     setOrderPanelOpen(false)
     setSelectedTable(null)
     loadTables()
-  }
-  const handlePayment = (_order: Order) => {
-    handleClosePanel()
-    toast.success('Sipariş kaydedildi! Ödeme için Siparişler ekranını kullanın.')
   }
   const handleRefresh = async () => {
     setRefreshing(true)
