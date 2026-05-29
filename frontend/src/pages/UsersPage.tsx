@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { Badge, Card, Spinner, EmptyState } from '@/components/ui/common'
 import { usersApi } from '@/api/users'
+import { reportsApi } from '@/api/reports'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { getInitials, cn, formatDateTime } from '@/utils/format'
+import { getInitials, cn, formatDateTime, formatCurrency } from '@/utils/format'
 import type { User, UserRole } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -40,6 +41,7 @@ export const UsersPage: React.FC = () => {
   const [resetPwId, setResetPwId] = useState<string | null>(null)
   const [newPw, setNewPw] = useState('')
   const [submitting, setSubmitting] = useState(false)  // Çift tıklama önleme + UX
+  const [perf, setPerf] = useState<Record<string, { revenue: number; orders: number }>>({})
   const isEdit = !!editUser
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<UserForm>({
@@ -54,6 +56,14 @@ export const UsersPage: React.FC = () => {
       setUsers(data.data || [])
     } catch { toast.error('Kullanıcılar yüklenemedi') }
     finally { setIsLoading(false) }
+
+    // Performans özeti (best-effort) — yetki yoksa veya hata olursa sessiz geç
+    try {
+      const { data } = await reportsApi.getWaiterPerformance()
+      const map: Record<string, { revenue: number; orders: number }> = {}
+      ;(data.data || []).forEach((w) => { map[w.waiterId] = { revenue: w.totalRevenue, orders: w.totalOrders } })
+      setPerf(map)
+    } catch { /* rapor yetkisi yoksa performans gösterilmez */ }
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -179,9 +189,14 @@ export const UsersPage: React.FC = () => {
                   </p>
                 </div>
 
-                <p className="text-xs text-[var(--color-text-muted)] font-body hidden md:block">
-                  {formatDateTime(user.createdAt)}
-                </p>
+                <div className="hidden md:flex flex-col items-end gap-0.5 text-xs flex-shrink-0">
+                  {perf[user.id] && perf[user.id].orders > 0 && (
+                    <span className="font-mono text-[var(--color-accent)]" title="Toplam ciro · sipariş">
+                      {formatCurrency(perf[user.id].revenue)} · {perf[user.id].orders} sipariş
+                    </span>
+                  )}
+                  <span className="text-[var(--color-text-muted)] font-body">{formatDateTime(user.createdAt)}</span>
+                </div>
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button onClick={() => handleToggle(user.id)}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Users, Clock, Receipt, StickyNote } from 'lucide-react'
+import { Users, Clock, Receipt, StickyNote, AlertTriangle } from 'lucide-react'
 import { cn, formatCurrency, formatRelative } from '@/utils/format'
 import type { Table } from '@/types'
 
@@ -56,6 +56,10 @@ export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected
   const [pressed, setPressed] = useState(false)
   const cfg  = STATUS_CONFIG[table.status]
   const sz   = SIZE_CONFIG[cardSize]
+
+  // Uzun süre açık kalan masa uyarısı — 90 dk+ dolu masa "ilgilenilmeli" sinyali
+  const openMin  = table.openedAt ? Math.floor((Date.now() - new Date(table.openedAt).getTime()) / 60000) : 0
+  const longOpen = table.status === 'occupied' && openMin >= 90
 
   const handleClick = () => {
     setPressed(true)
@@ -134,9 +138,10 @@ export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected
             {table.capacity}
           </span>
           {table.openedAt && cardSize !== 'sm' && (
-            <span className="flex items-center gap-1">
+            <span className={cn('flex items-center gap-1', longOpen && 'text-amber-400 font-medium')}>
               <Clock size={10} />
               {formatRelative(table.openedAt)}
+              {longOpen && <AlertTriangle size={9} className="text-amber-400" />}
             </span>
           )}
         </div>

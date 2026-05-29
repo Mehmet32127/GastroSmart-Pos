@@ -348,6 +348,17 @@ export const MenuPage: React.FC = () => {
                     <span className="text-xs text-[var(--color-text-muted)] font-body">KDV %{item.tax}</span>
                   </div>
 
+                  {/* Kâr marjı — maliyet girilmişse fiyat-maliyet farkı + yüzde */}
+                  {item.cost != null && item.cost > 0 && item.price > 0 && (
+                    <div className="flex items-center justify-between mb-2 text-xs">
+                      <span className="text-[var(--color-text-muted)] font-body">Maliyet {formatCurrency(item.cost)}</span>
+                      <span className="font-mono text-green-400">
+                        +{formatCurrency(item.price - item.cost)}
+                        <span className="text-[var(--color-text-muted)]"> · %{(((item.price - item.cost) / item.price) * 100).toFixed(0)}</span>
+                      </span>
+                    </div>
+                  )}
+
                   {canManageStock && (
                     (() => {
                       const hasStock = item.stock !== undefined && item.stock !== null

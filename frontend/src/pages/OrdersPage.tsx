@@ -63,13 +63,28 @@ export const OrdersPage: React.FC = () => {
     return items.reduce((sum, i) => sum + i.totalPrice, 0)
   }
 
+  const isOrderLate = (order: Order) => {
+    const c = order.createdAt || ''
+    const n = c.includes('T') ? c : c.replace(' ', 'T')
+    const t = new Date(n).getTime()
+    return !isNaN(t) && Date.now() - t > 30 * 60 * 1000
+  }
+
+  // Üst özet — geciken sipariş sayısı + tüm açık siparişlerin toplam tutarı
+  const lateCount = orders.filter(isOrderLate).length
+  const totalOpen = orders.reduce((s, o) => s + getOrderTotal(o), 0)
+
   return (
     <>
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
           <div>
             <h1 className="text-lg font-bold font-display text-[var(--color-text)]">Aktif Siparişler</h1>
-            <p className="text-xs text-[var(--color-text-muted)] font-body">{orders.length} açık sipariş</p>
+            <p className="text-xs text-[var(--color-text-muted)] font-body">
+              {orders.length} açık sipariş
+              {lateCount > 0 && <> · <span className="text-red-400 font-semibold">{lateCount} geç</span></>}
+              {totalOpen > 0 && <> · <span className="text-[var(--color-accent)] font-semibold">{formatCurrency(totalOpen)}</span></>}
+            </p>
           </div>
           <button onClick={handleRefresh}
             className="p-2 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
@@ -88,6 +103,9 @@ export const OrdersPage: React.FC = () => {
                 const elapsed = getElapsed(order.createdAt)
                 const total = getOrderTotal(order)
                 const items = order.items?.filter(i => i.status !== 'cancelled') || []
+                const pending   = items.filter(i => i.status === 'pending').length
+                const preparing = items.filter(i => i.status === 'preparing').length
+                const served    = items.filter(i => i.status === 'served').length
                 const createdAtStr = order.createdAt || new Date().toISOString()
                 const isLate = Date.now() - new Date(
                   createdAtStr.includes('T') ? createdAtStr : createdAtStr.replace(' ', 'T')
@@ -119,6 +137,14 @@ export const OrdersPage: React.FC = () => {
                         {elapsed}
                       </span>
                     </div>
+
+                    {(pending > 0 || preparing > 0 || served > 0) && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {pending > 0 && <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400">{pending} bekliyor</span>}
+                        {preparing > 0 && <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-400">{preparing} hazırlanıyor</span>}
+                        {served > 0 && <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-green-500/15 text-green-400">{served} servis</span>}
+                      </div>
+                    )}
 
                     <div className="space-y-1 flex-1">
                       {items.slice(0, 3).map(item => (

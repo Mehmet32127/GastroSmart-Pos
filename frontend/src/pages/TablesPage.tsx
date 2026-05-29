@@ -13,7 +13,7 @@ import { useTableStore } from '@/store/tableStore'
 import { useOrderStore } from '@/store/orderStore'
 import { useSocket } from '@/hooks/useSocket'
 import { useAuthStore } from '@/store/authStore'
-import { cn } from '@/utils/format'
+import { cn, formatCurrency } from '@/utils/format'
 import type { Table, Order } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -129,6 +129,11 @@ export const TablesPage: React.FC = () => {
     acc[t.status] = (acc[t.status] || 0) + 1
     return acc
   }, {} as Record<string, number>)
+
+  // Açık masaların toplam hesabı (anlık ciro potansiyeli)
+  const openRevenue = tables
+    .filter(t => t.status === 'occupied')
+    .reduce((s, t) => s + (t.activeOrderTotal || 0), 0)
 
   const handleTableClick = (table: Table) => {
     setSelectedTable(table)
@@ -272,6 +277,9 @@ export const TablesPage: React.FC = () => {
             <h1 className="text-lg font-bold font-display text-[var(--color-text)]">Masa Planı</h1>
             <p className="text-xs text-[var(--color-text-muted)] font-body">
               {tables.length} masa · {statusCounts['occupied'] || 0} dolu · {statusCounts['available'] || 0} boş
+              {openRevenue > 0 && (
+                <> · <span className="text-[var(--color-accent)] font-semibold">{formatCurrency(openRevenue)}</span> açık hesap</>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
