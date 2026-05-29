@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Search, RefreshCw, LayoutGrid, List, Plus, Edit2, Trash2,
-  Settings, ChevronDown, Tag,
+  Settings, ChevronDown, Tag, QrCode, Printer,
 } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { TableCard } from '@/components/tables/TableCard'
 import { OrderPanel } from '@/components/orders/OrderPanel'
 import { Spinner, EmptyState } from '@/components/ui/common'
@@ -58,6 +59,10 @@ export const TablesPage: React.FC = () => {
   const [orderPanelOpen, setOrderPanelOpen] = useState(false)
   const [gearOpen, setGearOpen] = useState(false)
   const [statusTable, setStatusTable] = useState<Table | null>(null)  // durum değiştirme menüsü
+  const [qrTable, setQrTable] = useState<Table | null>(null)          // QR menü modalı
+  const qrUrl = qrTable && user?.tenantSlug
+    ? `${window.location.origin}${import.meta.env.BASE_URL}m/${user.tenantSlug}?masa=${qrTable.number}`
+    : ''
 
   // Masa yönetimi
   const [mgmtMode, setMgmtMode] = useState(false)
@@ -675,6 +680,28 @@ export const TablesPage: React.FC = () => {
             </button>
           </div>
         )}
+        {user?.tenantSlug && (
+          <button onClick={() => { setQrTable(statusTable); setStatusTable(null) }}
+            className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)]/40 text-sm font-body transition-colors">
+            <QrCode size={15} /> QR Menü Kodunu Göster
+          </button>
+        )}
+      </Modal>
+
+      {/* ── Masa QR Menü ──────────────────────────────────────────────────────── */}
+      <Modal isOpen={!!qrTable} onClose={() => setQrTable(null)}
+        title={`${qrTable?.name ?? 'Masa'} · QR Menü`} size="sm"
+        footer={<Button variant="secondary" onClick={() => setQrTable(null)}>Kapat</Button>}>
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-xs text-[var(--color-text-muted)] font-body text-center">
+            Müşteri bu kodu telefonuyla okutup menüden sipariş verebilir.
+          </p>
+          <div className="bg-white p-4 rounded-xl">
+            {qrUrl && <QRCodeSVG value={qrUrl} size={200} />}
+          </div>
+          <p className="text-[10px] text-[var(--color-text-muted)] font-mono break-all text-center max-w-[240px]">{qrUrl}</p>
+          <Button icon={<Printer size={14} />} onClick={() => window.print()}>Yazdır</Button>
+        </div>
       </Modal>
     </>
   )

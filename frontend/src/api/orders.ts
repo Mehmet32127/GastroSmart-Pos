@@ -70,6 +70,10 @@ export const ordersApi = {
   cancel: (orderId: string) =>
     client.post<ApiResponse>(`/orders/${orderId}/cancel`),
 
+  // QR/müşteri siparişini garson onaylar (pending kalemler → preparing)
+  approve: (orderId: string) =>
+    client.post<ApiResponse<Order>>(`/orders/${orderId}/approve`),
+
   printReceipt: (orderId: string) =>
     client.get<ApiResponse<{ html: string }>>(`/print/receipt/${orderId}`),
 }

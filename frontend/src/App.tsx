@@ -20,6 +20,7 @@ import { MenuPage }         from '@/pages/MenuPage'
 import { UsersPage }        from '@/pages/UsersPage'
 import { ThemePage }        from '@/pages/ThemePage'
 import { SettingsPage }     from '@/pages/SettingsPage'
+import { PublicMenuPage }   from '@/pages/PublicMenuPage'
 
 // Stores / hooks
 import { useAuthStore }   from '@/store/authStore'
@@ -114,6 +115,9 @@ export const App: React.FC = () => {
       />
 
       <Routes>
+        {/* Public QR menü — müşteri, login gerektirmez */}
+        <Route path="/m/:slug" element={<PublicMenuPage />} />
+
         {/* Public — legacy (slug'sız) */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />

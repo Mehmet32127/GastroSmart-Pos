@@ -47,6 +47,17 @@ export const OrdersPage: React.FC = () => {
     loadOrders()
   }
 
+  const handleApprove = async (e: React.MouseEvent, orderId: string) => {
+    e.stopPropagation()
+    try {
+      await ordersApi.approve(orderId)
+      toast.success('Müşteri siparişi onaylandı')
+      loadOrders()
+    } catch {
+      toast.error('Onaylanamadı')
+    }
+  }
+
   const getElapsed = (createdAt: string) => {
     if (!createdAt) return '?'
     const normalized = createdAt.includes('T') ? createdAt : createdAt.replace(' ', 'T')
@@ -127,7 +138,9 @@ export const OrdersPage: React.FC = () => {
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <p className="text-base font-bold font-display text-[var(--color-text)]">{order.tableName}</p>
-                        <p className="text-xs text-[var(--color-text-muted)] font-body">{order.waiterName}</p>
+                        <p className="text-xs text-[var(--color-text-muted)] font-body">
+                          {order.waiterName || (order.source === 'customer' ? '🔔 QR Müşteri' : '—')}
+                        </p>
                       </div>
                       <span className={cn(
                         'flex items-center gap-1 text-xs font-mono px-2 py-1 rounded-lg',
@@ -162,6 +175,14 @@ export const OrdersPage: React.FC = () => {
                       <span className="text-xs text-[var(--color-text-muted)] font-body">Toplam Tutar</span>
                       <span className="text-lg font-bold font-mono text-[var(--color-accent)]">{formatCurrency(total)}</span>
                     </div>
+
+                    {order.source === 'customer' && pending > 0 && (
+                      <span role="button" tabIndex={0}
+                        onClick={(e) => handleApprove(e, order.id)}
+                        className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[var(--color-accent)]/15 text-[var(--color-accent)] text-xs font-semibold font-body hover:bg-[var(--color-accent)]/25 transition-colors cursor-pointer">
+                        🔔 Müşteri siparişi — Onayla
+                      </span>
+                    )}
                   </button>
                 )
               })}

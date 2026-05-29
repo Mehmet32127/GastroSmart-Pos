@@ -125,6 +125,7 @@ export interface Order {
   waiterId: string
   waiterName: string
   status: OrderStatus
+  source?: 'staff' | 'customer'
   items: OrderItem[]
   subtotal: number
   taxTotal: number
