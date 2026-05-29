@@ -22,6 +22,10 @@ export function useAuth() {
         setTokens(tokens.accessToken, tokens.refreshToken)
         setUser(user)
 
+        // Taze giriş = yeni oturum. Önceki AFK/manuel kilit durumunu temizle ki
+        // kullanıcı şifresiyle giriş yaptıktan sonra tekrar kilit ekranı görmesin.
+        try { localStorage.removeItem('gastro_locked') } catch { /* private mode */ }
+
         // KASITLI: tenant slug localStorage'a yazılmıyor.
         // Aynı tarayıcıdan farklı restoranlara giriş yapılabilsin diye —
         // login formunda her zaman auto-discover çalışır (username + şifre eşleşmesi).

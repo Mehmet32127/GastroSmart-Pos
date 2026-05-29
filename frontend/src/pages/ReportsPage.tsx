@@ -253,8 +253,7 @@ export const ReportsPage: React.FC = () => {
     const load = async () => {
       setIsLoading(true)
       try {
-        const yStr = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-        const [d, w, h, wa, ti, cats, ov, yd] = await Promise.all([
+        const [d, w, h, wa, ti, cats, ov] = await Promise.all([
           reportsApi.getDailySummary(),
           reportsApi.getWeeklySummary(),
           reportsApi.getHourlySales(),
@@ -262,14 +261,12 @@ export const ReportsPage: React.FC = () => {
           reportsApi.getTopItems({ limit: 100 }),
           menuApi.getCategories(),
           reportsApi.getOverview(),
-          reportsApi.getDailySummary(yStr),
         ])
         setDaily(d.data.data || null)
         setWeekly(w.data.data || [])
         setHourly(h.data.data || [])
         setWaiters(wa.data.data || [])
         setOverview(ov.data.data || null)
-        setYesterday(yd.data.data || null)
         setTopItems((ti.data.data as any[]) || [])
 
         const catList: any[] = cats.data.data || []
@@ -301,6 +298,16 @@ export const ReportsPage: React.FC = () => {
     }
     load()
   }, [])
+
+  // Dün karşılaştırması — gösterilen günün (daily.date; satış yoksa son satış
+  // gününe düşmüş olabilir) bir öncesini çek ki trend oku tutarlı olsun.
+  useEffect(() => {
+    if (!daily?.date) return
+    const prev = new Date(new Date(daily.date).getTime() - 86400000).toISOString().split('T')[0]
+    reportsApi.getDailySummary(prev)
+      .then(r => setYesterday(r.data.data || null))
+      .catch(() => setYesterday(null))
+  }, [daily?.date])
 
   // Load monthly data (daily breakdown of a specific month)
   useEffect(() => {
@@ -476,9 +483,9 @@ export const ReportsPage: React.FC = () => {
                   tickFormatter={chartLabel}
                   tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
                   axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={(v: number) => formatCurrency(v).replace(/[₺$€£]/, v >= 1000 ? (v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : `${(v/1000).toFixed(0)}K`) : String(v))}
+                <YAxis tickFormatter={(v: number) => v >= 1000000 ? `₺${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `₺${(v / 1000).toFixed(0)}K` : `₺${v}`}
                   tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
-                  axisLine={false} tickLine={false} width={52} />
+                  axisLine={false} tickLine={false} width={48} />
                 <Tooltip
                   cursor={{ fill: 'rgba(255,255,255,0.04)', radius: 4 }}
                   content={({ active, payload, label }: any) => {
