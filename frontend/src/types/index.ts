@@ -210,11 +210,29 @@ export interface LowStockItem {
   unit: string
 }
 
+export interface ProfitItem {
+  name: string
+  revenue: number
+  profit: number
+  margin: number
+}
+
+export interface RecentOrder {
+  tableName: string
+  waiterName: string
+  total: number
+  paymentMethod: string
+  closedAt: string
+}
+
 export interface ReportsOverview {
   tables: TableStats
   turnover: number
   closedToday: number
   lowStock: LowStockItem[]
+  stockSummary: { trackedCount: number; items: LowStockItem[] }
+  topProfit: ProfitItem[]
+  recentOrders: RecentOrder[]
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────────

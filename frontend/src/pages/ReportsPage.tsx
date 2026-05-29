@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
-import { Download, TrendingUp, ShoppingBag, DollarSign, ArrowLeft, Crown, Receipt, Users, Package, Clock, Ban, Flame, LayoutGrid, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react'
+import { Download, TrendingUp, ShoppingBag, DollarSign, ArrowLeft, Crown, Receipt, Users, Package, Clock, Ban, Flame, LayoutGrid, AlertTriangle, ArrowUp, ArrowDown, Award, History, CalendarDays } from 'lucide-react'
 import { Card, Spinner } from '@/components/ui/common'
 import { reportsApi } from '@/api/reports'
 import { menuApi } from '@/api/menu'
 import { formatCurrency } from '@/utils/format'
-import type { WaiterPerformance, ReportsOverview, TableStats, LowStockItem } from '@/types'
+import type { WaiterPerformance, ReportsOverview, TableStats, LowStockItem, ProfitItem, RecentOrder } from '@/types'
 import toast from 'react-hot-toast'
 
 const COLORS = ['#f59e0b','#22c55e','#3b82f6','#a78bfa','#ef4444','#ec4899','#14b8a6','#f97316','#64748b','#e11d48']
@@ -194,15 +194,15 @@ const TablesWidget: React.FC<{ tables: TableStats; turnover: number; closedToday
   )
 }
 
-// Düşük stok uyarıları
-const LowStockWidget: React.FC<{ items: LowStockItem[] }> = ({ items }) => (
+// Stok durumu — düşük stok uyarıları; uyarı yokken en düşük stoklular + özet
+const StockStatusWidget: React.FC<{ items: LowStockItem[]; summary: { trackedCount: number; items: LowStockItem[] } }> = ({ items, summary }) => (
   <Card padding="md">
     <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-3 flex items-center gap-2">
-      <AlertTriangle size={15} className="text-amber-400" /> Düşük Stok Uyarıları
-      {items.length > 0 && <span className="ml-auto text-xs font-mono text-amber-400">{items.length}</span>}
+      <AlertTriangle size={15} className="text-amber-400" /> Stok Durumu
+      {items.length > 0 && <span className="ml-auto text-xs font-mono text-amber-400">{items.length} uyarı</span>}
     </h3>
     {items.length > 0 ? (
-      <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+      <div className="space-y-1.5 max-h-[220px] overflow-y-auto">
         {items.map((it, i) => {
           const out = it.stock_quantity <= 0
           return (
@@ -216,8 +216,135 @@ const LowStockWidget: React.FC<{ items: LowStockItem[] }> = ({ items }) => (
           )
         })}
       </div>
+    ) : summary.trackedCount > 0 ? (
+      <>
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-green-500/10 border border-green-500/20">
+          <span className="text-green-400 text-sm">✓</span>
+          <span className="text-xs text-green-400 font-body">{summary.trackedCount} takipli ürünün tümü yeterli</span>
+        </div>
+        <p className="text-[10px] uppercase tracking-wide text-[var(--color-text-muted)] font-mono mb-1.5">En düşük stoklular</p>
+        <div className="space-y-1">
+          {summary.items.map((it, i) => (
+            <div key={i} className="flex items-center justify-between py-1 border-b border-[var(--color-border)]/40">
+              <span className="text-xs text-[var(--color-text)] font-body truncate pr-2">{it.name}</span>
+              <span className="text-xs font-mono text-[var(--color-text-muted)] shrink-0">{it.stock_quantity} {it.unit}</span>
+            </div>
+          ))}
+        </div>
+      </>
     ) : (
-      <p className="text-sm text-[var(--color-text-muted)] text-center py-10 font-body">✓ Tüm stoklar yeterli</p>
+      <p className="text-sm text-[var(--color-text-muted)] text-center py-10 font-body">Stok takibi yapılan ürün yok</p>
+    )}
+  </Card>
+)
+
+// Haftalık ciro trendi — son günlerin bar grafiği + toplam/ortalama
+const WeeklyTrendWidget: React.FC<{ data: any[] }> = ({ data }) => {
+  const total = data.reduce((s, r) => s + (r.totalRevenue || 0), 0)
+  const avg = data.length ? total / data.length : 0
+  return (
+    <Card padding="md">
+      <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-3 flex items-center gap-2">
+        <CalendarDays size={15} className="text-[var(--color-accent)]" /> Haftalık Ciro Trendi
+      </h3>
+      {data.length > 0 ? (
+        <>
+          <ResponsiveContainer width="100%" height={150}>
+            <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barCategoryGap="25%">
+              <XAxis dataKey="date" tickFormatter={(d: any) => String(d).slice(5)} tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={(v: number) => v >= 1000 ? `₺${(v / 1000).toFixed(0)}K` : `₺${v}`} tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} width={40} />
+              <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                content={({ active, payload, label }: any) => {
+                  if (!active || !payload?.length) return null
+                  return (
+                    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '6px 12px' }}>
+                      <p style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{String(label).slice(5)}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent)', fontFamily: 'monospace' }}>{formatCurrency(payload[0]?.value)}</p>
+                    </div>
+                  )
+                }} />
+              <Bar dataKey="totalRevenue" fill="var(--color-accent)" radius={[3, 3, 0, 0]} maxBarSize={36} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex justify-between mt-3 pt-3 border-t border-[var(--color-border)] text-xs">
+            <span className="text-[var(--color-text-muted)] font-body">Toplam: <span className="text-[var(--color-text)] font-mono font-semibold">{formatCurrency(total)}</span></span>
+            <span className="text-[var(--color-text-muted)] font-body">Günlük ort: <span className="text-[var(--color-accent)] font-mono font-semibold">{formatCurrency(avg)}</span></span>
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-[var(--color-text-muted)] text-center py-10 font-body">Veri yok</p>
+      )}
+    </Card>
+  )
+}
+
+// En kârlı ürünler — kâr (ciro − maliyet) ve marj. cost girilmemişse kâr ≈ ciro.
+const ProfitItemsWidget: React.FC<{ items: ProfitItem[] }> = ({ items }) => {
+  const max = items[0]?.profit || 1
+  return (
+    <Card padding="md">
+      <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-3 flex items-center gap-2">
+        <Award size={15} className="text-[var(--color-accent)]" /> En Kârlı Ürünler
+      </h3>
+      {items.length > 0 ? (
+        <div className="space-y-2.5">
+          {items.slice(0, 6).map((it, i) => (
+            <div key={i}>
+              <div className="flex justify-between mb-1 text-xs gap-2">
+                <span className="text-[var(--color-text)] font-body truncate">{i + 1}. {it.name}</span>
+                <span className="font-mono shrink-0 whitespace-nowrap">
+                  <span className="text-green-400">{formatCurrency(it.profit)}</span>
+                  <span className="text-[var(--color-text-muted)]"> · %{it.margin.toFixed(0)}</span>
+                </span>
+              </div>
+              <div className="h-1.5 bg-[var(--color-surface2)] rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${max > 0 ? (it.profit / max) * 100 : 0}%`, background: COLORS[i % COLORS.length] }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-[var(--color-text-muted)] text-center py-10 font-body">Veri yok</p>
+      )}
+    </Card>
+  )
+}
+
+const PAYMENT_LABELS: Record<string, string> = { cash: 'Nakit', card: 'Kart', mixed: 'Karışık', complimentary: 'İkram' }
+
+// Canlı son işlemler — son kapanan siparişler tablosu
+const RecentOrdersWidget: React.FC<{ orders: RecentOrder[] }> = ({ orders }) => (
+  <Card padding="md">
+    <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-3 flex items-center gap-2">
+      <History size={15} className="text-[var(--color-accent)]" /> Canlı Son İşlemler
+    </h3>
+    {orders.length > 0 ? (
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-[var(--color-text-muted)] font-body text-left">
+              <th className="font-medium pb-2 pr-3">Masa</th>
+              <th className="font-medium pb-2 pr-3">Garson</th>
+              <th className="font-medium pb-2 pr-3">Ödeme</th>
+              <th className="font-medium pb-2 pr-3">Saat</th>
+              <th className="font-medium pb-2 text-right">Tutar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((o, i) => (
+              <tr key={i} className="border-t border-[var(--color-border)]/40">
+                <td className="py-2 pr-3 text-[var(--color-text)] font-body whitespace-nowrap">{o.tableName}</td>
+                <td className="py-2 pr-3 text-[var(--color-text-muted)] font-body whitespace-nowrap">{o.waiterName}</td>
+                <td className="py-2 pr-3 font-mono text-[var(--color-text-muted)]">{PAYMENT_LABELS[o.paymentMethod] || o.paymentMethod}</td>
+                <td className="py-2 pr-3 font-mono text-[var(--color-text-muted)]">{o.closedAt ? new Date(o.closedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                <td className="py-2 text-right font-mono font-semibold text-[var(--color-accent)] whitespace-nowrap">{formatCurrency(o.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <p className="text-sm text-[var(--color-text-muted)] text-center py-10 font-body">Henüz işlem yok</p>
     )}
   </Card>
 )
@@ -633,13 +760,22 @@ export const ReportsPage: React.FC = () => {
         <PaymentDonut cash={daily?.cashRevenue || 0} card={daily?.cardRevenue || 0} />
       </div>
 
-      {/* 2'li grid: Masa doluluk | Düşük stok */}
+      {/* Masa doluluk | Stok durumu */}
       {overview && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <TablesWidget tables={overview.tables} turnover={overview.turnover} closedToday={overview.closedToday} />
-          <LowStockWidget items={overview.lowStock} />
+          <StockStatusWidget items={overview.lowStock} summary={overview.stockSummary} />
         </div>
       )}
+
+      {/* Haftalık ciro trendi | En kârlı ürünler */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <WeeklyTrendWidget data={weekly} />
+        {overview && <ProfitItemsWidget items={overview.topProfit} />}
+      </div>
+
+      {/* Canlı son işlemler — full width */}
+      {overview && <RecentOrdersWidget orders={overview.recentOrders} />}
 
       {/* Garson performansı — full width */}
       {waiters.length > 0 && (
