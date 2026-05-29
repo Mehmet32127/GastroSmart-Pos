@@ -50,10 +50,13 @@ interface TableCardProps {
   onClick: (table: Table) => void
   isSelected?: boolean
   cardSize?: 'sm' | 'md' | 'lg'
+  onStatusChange?: (table: Table) => void
 }
 
-export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected, cardSize = 'md' }) => {
+export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected, cardSize = 'md', onStatusChange }) => {
   const [pressed, setPressed] = useState(false)
+  const holdTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const suppressClick = React.useRef(false)  // uzun-bas durum menüsü açtıysa onClick'i yut
   const cfg  = STATUS_CONFIG[table.status]
   const sz   = SIZE_CONFIG[cardSize]
 
@@ -67,14 +70,32 @@ export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isSelected
   const longOpen = table.status === 'occupied' && openMin >= 90
 
   const handleClick = () => {
+    if (suppressClick.current) { suppressClick.current = false; return }
     setPressed(true)
     setTimeout(() => setPressed(false), 200)
     onClick(table)
   }
 
+  // Sağ tık (masaüstü) veya uzun bas (dokunmatik) → durum değiştirme menüsü
+  const openStatusMenu = () => { if (onStatusChange) onStatusChange(table) }
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (!onStatusChange) return
+    e.preventDefault()
+    openStatusMenu()
+  }
+  const handleTouchStart = () => {
+    if (!onStatusChange) return
+    holdTimer.current = setTimeout(() => { suppressClick.current = true; openStatusMenu() }, 500)
+  }
+  const cancelHold = () => { if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null } }
+
   return (
     <button
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={cancelHold}
+      onTouchMove={cancelHold}
       className={cn(
         'relative flex flex-col rounded-2xl border text-left',
         'w-full h-full transition-all duration-200 select-none overflow-hidden',

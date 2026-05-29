@@ -14,7 +14,7 @@ import { useOrderStore } from '@/store/orderStore'
 import { useSocket } from '@/hooks/useSocket'
 import { useAuthStore } from '@/store/authStore'
 import { cn, formatCurrency } from '@/utils/format'
-import type { Table } from '@/types'
+import type { Table, TableStatus } from '@/types'
 import toast from 'react-hot-toast'
 
 const STATUS_FILTERS = [
@@ -57,6 +57,7 @@ export const TablesPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false)
   const [orderPanelOpen, setOrderPanelOpen] = useState(false)
   const [gearOpen, setGearOpen] = useState(false)
+  const [statusTable, setStatusTable] = useState<Table | null>(null)  // durum değiştirme menüsü
 
   // Masa yönetimi
   const [mgmtMode, setMgmtMode] = useState(false)
@@ -136,9 +137,24 @@ export const TablesPage: React.FC = () => {
     .reduce((s, t) => s + (t.activeOrderTotal || 0), 0)
 
   const handleTableClick = (table: Table) => {
+    // "Temizleniyor" masaya tıklayınca sipariş açma — durum menüsü (boşalt) göster
+    if (table.status === 'cleaning') { setStatusTable(table); return }
     setSelectedTable(table)
     setCurrentOrder(null)
     setOrderPanelOpen(true)
+  }
+
+  // Manuel masa durumu değiştirme (sağ tık / uzun bas → menü, ya da cleaning'e tıklama)
+  const handleSetStatus = async (status: TableStatus) => {
+    if (!statusTable) return
+    try {
+      await tablesApi.updateStatus(statusTable.id, status)
+      toast.success('Masa durumu güncellendi')
+      setStatusTable(null)
+      loadTables()
+    } catch {
+      toast.error('Durum değiştirilemedi')
+    }
   }
   const handleClosePanel = () => {
     setOrderPanelOpen(false)
@@ -425,7 +441,8 @@ export const TablesPage: React.FC = () => {
               {filteredTables.map(table => (
                 <div key={table.id} className={cn('relative group', CARD_HEIGHT[cardSize])}>
                   <TableCard table={table} onClick={mgmtMode ? () => {} : handleTableClick}
-                    isSelected={selectedTable?.id === table.id} cardSize={cardSize} />
+                    isSelected={selectedTable?.id === table.id} cardSize={cardSize}
+                    onStatusChange={mgmtMode ? undefined : setStatusTable} />
                   {mgmtMode && canManage && (
                     <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => openTableModal(table)}
@@ -624,6 +641,41 @@ export const TablesPage: React.FC = () => {
         title="Kategori Sil"
         message={`"${deletingSection}" kategorisi silinecek. Bu kategorideki masaların kategorisi temizlenecek (masalar silinmez).`}
         confirmText="Sil" danger />
+
+      {/* ── Masa Durumu Değiştirme ─────────────────────────────────────────────── */}
+      <Modal isOpen={!!statusTable} onClose={() => setStatusTable(null)}
+        title={`${statusTable?.name ?? 'Masa'} · Durum`} size="sm"
+        footer={<Button variant="secondary" onClick={() => setStatusTable(null)}>Kapat</Button>}>
+        {statusTable?.status === 'occupied' ? (
+          <p className="text-sm text-[var(--color-text-muted)] font-body py-2">
+            Bu masada <b className="text-[var(--color-text)]">açık sipariş</b> var. Durumu değiştirmek için önce
+            Siparişler ekranından hesabı kapatın.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-[var(--color-text-muted)] font-body mb-1">Masayı şu duruma al:</p>
+            {statusTable?.status === 'cleaning' ? (
+              <button onClick={() => handleSetStatus('available')}
+                className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 font-body text-sm font-medium hover:bg-green-500/20 transition-colors">
+                ✓ Temizlendi — Masayı Boşalt
+              </button>
+            ) : (
+              <button onClick={() => handleSetStatus('available')}
+                className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] text-[var(--color-text)] font-body text-sm hover:border-green-500/40 transition-colors">
+                <span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Boş
+              </button>
+            )}
+            <button onClick={() => handleSetStatus('cleaning')}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] text-[var(--color-text)] font-body text-sm hover:border-blue-500/40 transition-colors">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Temizleniyor
+            </button>
+            <button onClick={() => handleSetStatus('reserved')}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] text-[var(--color-text)] font-body text-sm hover:border-amber-500/40 transition-colors">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Rezerve
+            </button>
+          </div>
+        )}
+      </Modal>
     </>
   )
 }
