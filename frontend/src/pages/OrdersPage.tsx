@@ -209,11 +209,11 @@ export const OrdersPage: React.FC = () => {
                       <span className="text-lg font-bold font-mono text-[var(--color-accent)]">{formatCurrency(total)}</span>
                     </div>
 
-                    {order.source === 'customer' && pending > 0 && (
+                    {pending > 0 && (
                       <span role="button" tabIndex={0}
                         onClick={(e) => handleApprove(e, order.id)}
                         className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[var(--color-accent)]/15 text-[var(--color-accent)] text-xs font-semibold font-body hover:bg-[var(--color-accent)]/25 transition-colors cursor-pointer">
-                        🔔 Müşteri siparişi — Onayla
+                        {order.source === 'customer' ? '🔔 Müşteri Siparişi — Onayla' : '✓ Hazırlığa Onayla'}
                       </span>
                     )}
                   </button>
