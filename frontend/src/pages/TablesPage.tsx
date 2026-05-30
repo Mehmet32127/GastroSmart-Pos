@@ -1,9 +1,22 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Search, RefreshCw, LayoutGrid, List, Plus, Edit2, Trash2,
-  Settings, ChevronDown, Tag, QrCode, Printer,
+  Settings, ChevronDown, Tag, QrCode, Printer, Users, DollarSign, Percent,
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+
+// Üst özet kartı
+const StatBox: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; color: string }> = ({ icon, label, value, color }) => (
+  <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3 shadow-card">
+    <div className="flex items-start justify-between">
+      <div className="min-w-0">
+        <p className="text-[11px] text-[var(--color-text-muted)] font-body mb-0.5 truncate">{label}</p>
+        <p className={`text-lg font-bold font-mono ${color}`}>{value}</p>
+      </div>
+      <div className={`p-1.5 rounded-lg bg-[var(--color-surface2)] ${color} shrink-0`}>{icon}</div>
+    </div>
+  </div>
+)
 import { TableCard } from '@/components/tables/TableCard'
 import { OrderPanel } from '@/components/orders/OrderPanel'
 import { Spinner, EmptyState } from '@/components/ui/common'
@@ -140,6 +153,9 @@ export const TablesPage: React.FC = () => {
   const openRevenue = tables
     .filter(t => t.status === 'occupied')
     .reduce((s, t) => s + (t.activeOrderTotal || 0), 0)
+  const occupancyRate = tables.length
+    ? ((statusCounts['occupied'] || 0) / tables.length) * 100
+    : 0
 
   const handleTableClick = (table: Table) => {
     // "Temizleniyor" masaya tıklayınca sipariş açma — durum menüsü (boşalt) göster
@@ -415,6 +431,15 @@ export const TablesPage: React.FC = () => {
 
         {/* Masalar */}
         <div className="flex-1 overflow-y-auto p-5">
+          {!isLoading && tables.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
+              <StatBox icon={<LayoutGrid size={16} />} label="Toplam Masa" value={tables.length} color="text-[var(--color-text-muted)]" />
+              <StatBox icon={<Users size={16} />} label="Dolu" value={statusCounts['occupied'] || 0} color="text-red-400" />
+              <StatBox icon={<Users size={16} />} label="Boş" value={statusCounts['available'] || 0} color="text-green-400" />
+              <StatBox icon={<Percent size={16} />} label="Doluluk" value={`%${occupancyRate.toFixed(0)}`} color="text-blue-400" />
+              <StatBox icon={<DollarSign size={16} />} label="Açık Hesap" value={formatCurrency(openRevenue)} color="text-[var(--color-accent)]" />
+            </div>
+          )}
           {isLoading ? (
             <div className="flex items-center justify-center h-64"><Spinner size={32} /></div>
           ) : filteredTables.length === 0 && !mgmtMode ? (

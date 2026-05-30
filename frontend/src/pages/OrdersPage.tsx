@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Clock, RefreshCw } from 'lucide-react'
+import { Clock, RefreshCw, ShoppingBag, AlertTriangle, DollarSign, Package, History, Receipt } from 'lucide-react'
 import { PaymentModal } from '@/components/orders/PaymentModal'
 import { Spinner, EmptyState } from '@/components/ui/common'
 import { ordersApi } from '@/api/orders'
@@ -7,6 +7,19 @@ import { formatCurrency, cn } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
 import type { Order } from '@/types'
 import toast from 'react-hot-toast'
+
+// Üst özet kartı (Siparişler/Masalar özet şeridi için)
+const StatBox: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; color: string }> = ({ icon, label, value, color }) => (
+  <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3 shadow-card">
+    <div className="flex items-start justify-between">
+      <div className="min-w-0">
+        <p className="text-[11px] text-[var(--color-text-muted)] font-body mb-0.5 truncate">{label}</p>
+        <p className={`text-lg font-bold font-mono ${color}`}>{value}</p>
+      </div>
+      <div className={`p-1.5 rounded-lg bg-[var(--color-surface2)] ${color} shrink-0`}>{icon}</div>
+    </div>
+  </div>
+)
 
 export const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
@@ -81,9 +94,17 @@ export const OrdersPage: React.FC = () => {
     return !isNaN(t) && Date.now() - t > 30 * 60 * 1000
   }
 
-  // Üst özet — geciken sipariş sayısı + tüm açık siparişlerin toplam tutarı
+  // Üst özet metrikleri
   const lateCount = orders.filter(isOrderLate).length
   const totalOpen = orders.reduce((s, o) => s + getOrderTotal(o), 0)
+  const pendingItems = orders.reduce((s, o) => s + (o.items?.filter(i => i.status === 'pending').length || 0), 0)
+  const avgTicket = orders.length ? totalOpen / orders.length : 0
+  const oldestMin = orders.reduce((m, o) => {
+    const c = o.createdAt || ''
+    const t = new Date(c.includes('T') ? c : c.replace(' ', 'T')).getTime()
+    return isNaN(t) ? m : Math.max(m, Math.floor((Date.now() - t) / 60000))
+  }, 0)
+  const fmtMin = (m: number) => m <= 0 ? '—' : m < 60 ? `${m}dk` : `${Math.floor(m / 60)}s ${m % 60}dk`
 
   return (
     <>
@@ -102,6 +123,18 @@ export const OrdersPage: React.FC = () => {
             <RefreshCw size={16} className={cn(refreshing && 'animate-spin')} />
           </button>
         </div>
+
+        {/* Canlı özet kart şeridi */}
+        {!isLoading && orders.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 px-5 pt-4">
+            <StatBox icon={<ShoppingBag size={16} />} label="Açık Sipariş" value={orders.length} color="text-blue-400" />
+            <StatBox icon={<Package size={16} />} label="Bekleyen Kalem" value={pendingItems} color="text-amber-400" />
+            <StatBox icon={<AlertTriangle size={16} />} label="Geciken (30dk+)" value={lateCount} color={lateCount > 0 ? 'text-red-400' : 'text-[var(--color-text-muted)]'} />
+            <StatBox icon={<DollarSign size={16} />} label="Açık Tutar" value={formatCurrency(totalOpen)} color="text-[var(--color-accent)]" />
+            <StatBox icon={<Receipt size={16} />} label="Ort. Adisyon" value={formatCurrency(avgTicket)} color="text-cyan-400" />
+            <StatBox icon={<History size={16} />} label="En Eski" value={fmtMin(oldestMin)} color="text-purple-400" />
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-5">
           {isLoading ? (
