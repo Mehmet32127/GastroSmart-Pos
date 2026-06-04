@@ -24,16 +24,16 @@ interface NavItem {
 //  - Menü, Tema, Ayarlar: müdür + admin (operasyonel personel değiştirmez)
 //  - Kullanıcılar: sadece admin
 const NAV_ITEMS: NavItem[] = [
-  { path: '/',             label: 'Masalar',       icon: <LayoutGrid size={20} /> },
-  { path: '/orders',       label: 'Siparişler',    icon: <ShoppingBag size={20} /> },
-  { path: '/reservations', label: 'Rezervasyonlar',icon: <CalendarDays size={20} /> },
-  { path: '/history',      label: 'Geçmiş',        icon: <Clock size={20} /> },
-  { path: '/reports',      label: 'Raporlar',      icon: <BarChart3 size={20} />,      roles: ['admin', 'manager', 'cashier'] },
+  { path: '/',             label: 'Masalar',       icon: <LayoutGrid size={22} /> },
+  { path: '/orders',       label: 'Siparişler',    icon: <ShoppingBag size={22} /> },
+  { path: '/reservations', label: 'Rezervasyonlar',icon: <CalendarDays size={22} /> },
+  { path: '/history',      label: 'Geçmiş',        icon: <Clock size={22} /> },
+  { path: '/reports',      label: 'Raporlar',      icon: <BarChart3 size={22} />,      roles: ['admin', 'manager', 'cashier'] },
 
-  { path: '/menu',         label: 'Menü & Stok',   icon: <UtensilsCrossed size={20} />,roles: ['admin', 'manager'] },
-  { path: '/users',        label: 'Kullanıcılar',  icon: <Users size={20} />,           roles: ['admin'] },
-  { path: '/theme',        label: 'Tema',          icon: <Palette size={20} />,         roles: ['admin', 'manager'] },
-  { path: '/settings',    label: 'Ayarlar',       icon: <Settings size={20} />,        roles: ['admin', 'manager'] },
+  { path: '/menu',         label: 'Menü & Stok',   icon: <UtensilsCrossed size={22} />,roles: ['admin', 'manager'] },
+  { path: '/users',        label: 'Kullanıcılar',  icon: <Users size={22} />,           roles: ['admin'] },
+  { path: '/theme',        label: 'Tema',          icon: <Palette size={22} />,         roles: ['admin', 'manager'] },
+  { path: '/settings',    label: 'Ayarlar',       icon: <Settings size={22} />,        roles: ['admin', 'manager'] },
 ]
 
 interface SidebarProps {
@@ -97,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 scrollbar-thin">
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1.5 scrollbar-thin">
         {NAV_ITEMS.map((item) => {
           if (!canAccess(item)) return null
           const isActive = location.pathname === item.path ||
@@ -111,8 +111,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               title={collapsed ? item.label : undefined}
               className={cn(
                 'group w-full flex items-center rounded-xl transition-all duration-200 relative',
-                'text-sm font-medium font-body',
-                collapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5',
+                'text-[15px] font-medium font-body',
+                collapsed ? 'justify-center p-3.5' : 'gap-3.5 px-3.5 py-4',
                 isActive
                   ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
                   : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-text)]'
@@ -153,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               collapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
             )}
           >
-            <Calculator size={20} className="flex-shrink-0" />
+            <Calculator size={22} className="flex-shrink-0" />
             {!collapsed && <span>Hesap Makinesi</span>}
           </button>
         )}
@@ -167,7 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               'hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]',
               collapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
             )}>
-            <Lock size={20} className="flex-shrink-0" />
+            <Lock size={22} className="flex-shrink-0" />
             {!collapsed && <span>Ekranı Kilitle</span>}
           </button>
         )}
@@ -180,7 +180,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               'hover:bg-red-500/10 hover:text-red-400',
               collapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
             )}>
-            <LogOut size={20} className="flex-shrink-0" />
+            <LogOut size={22} className="flex-shrink-0" />
             {!collapsed && <span>Çıkış Yap</span>}
           </button>
         ) : (

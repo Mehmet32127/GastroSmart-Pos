@@ -39,11 +39,11 @@ const WaiterStat: React.FC<{
 }> = ({ icon, value, label, danger }) => (
   <span
     title={label}
-    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[var(--color-surface2)] text-[10px] font-mono whitespace-nowrap ${
+    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-surface2)] text-[12.5px] font-mono whitespace-nowrap ${
       danger ? 'text-red-500 font-semibold' : 'text-[var(--color-text-muted)]'
     }`}
   >
-    <span className="opacity-70 shrink-0">{icon}</span>
+    <span className={`shrink-0 ${danger ? 'text-red-500' : 'text-[var(--color-accent)]'}`}>{icon}</span>
     {value}
   </span>
 )
@@ -801,9 +801,24 @@ export const ReportsPage: React.FC = () => {
 
         {waiters.length > 0 && (
         <Card padding="md">
-          <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-4 flex items-center gap-2">
+          <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-3 flex items-center gap-2">
             <Crown size={16} className="text-amber-400" fill="currentColor" /> Garson Performansı
           </h3>
+
+          {/* Sembol anlamları — kullanıcı rozetlerdeki ikonların ne olduğunu buradan görür */}
+          <div className="mb-4 p-3 rounded-lg bg-[var(--color-surface2)]/50 border border-[var(--color-border)]">
+            <p className="text-[11px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-2">Sembollerin Anlamı</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-[12px] text-[var(--color-text-muted)] font-body">
+              <span className="inline-flex items-center gap-2"><Receipt size={15} className="text-[var(--color-accent)] shrink-0" /> Sipariş sayısı</span>
+              <span className="inline-flex items-center gap-2"><Users size={15} className="text-[var(--color-accent)] shrink-0" /> Toplam misafir</span>
+              <span className="inline-flex items-center gap-2"><Package size={15} className="text-[var(--color-accent)] shrink-0" /> Satılan ürün</span>
+              <span className="inline-flex items-center gap-2"><DollarSign size={15} className="text-[var(--color-accent)] shrink-0" /> Ortalama adisyon</span>
+              <span className="inline-flex items-center gap-2"><TrendingUp size={15} className="text-[var(--color-accent)] shrink-0" /> Kişi başı ciro</span>
+              <span className="inline-flex items-center gap-2"><Clock size={15} className="text-[var(--color-accent)] shrink-0" /> Ort. servis süresi</span>
+              <span className="inline-flex items-center gap-2"><Ban size={15} className="text-[var(--color-accent)] shrink-0" /> İptal oranı</span>
+            </div>
+          </div>
+
           <div className="space-y-4">
             {(waiters as WaiterPerformance[]).slice(0, 6).map((w, i) => {
               const topRevenue = (waiters[0] as WaiterPerformance)?.totalRevenue || 0
@@ -834,13 +849,13 @@ export const ReportsPage: React.FC = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-1.5 mt-2 ml-7">
-                    <WaiterStat icon={<Receipt size={11} />} value={w.totalOrders} label="Sipariş sayısı" />
-                    <WaiterStat icon={<Users size={11} />} value={w.totalGuests} label="Toplam misafir" />
-                    <WaiterStat icon={<Package size={11} />} value={w.itemsSold} label="Satılan ürün adedi" />
-                    <WaiterStat icon={<DollarSign size={11} />} value={formatCurrency(w.averageOrderValue)} label="Ortalama adisyon" />
-                    <WaiterStat icon={<Users size={11} />} value={`${formatCurrency(w.revenuePerGuest)}/kişi`} label="Kişi başı ciro" />
-                    <WaiterStat icon={<Clock size={11} />} value={fmtDuration(w.avgServiceTime)} label="Ortalama servis süresi" />
-                    <WaiterStat icon={<Ban size={11} />} value={`%${(w.cancelRate ?? 0).toFixed(1)}`} label="İptal oranı" danger={w.cancelRate > 10} />
+                    <WaiterStat icon={<Receipt size={16} />} value={w.totalOrders} label="Sipariş sayısı" />
+                    <WaiterStat icon={<Users size={16} />} value={w.totalGuests} label="Toplam misafir" />
+                    <WaiterStat icon={<Package size={16} />} value={w.itemsSold} label="Satılan ürün adedi" />
+                    <WaiterStat icon={<DollarSign size={16} />} value={formatCurrency(w.averageOrderValue)} label="Ortalama adisyon" />
+                    <WaiterStat icon={<TrendingUp size={16} />} value={`${formatCurrency(w.revenuePerGuest)}/kişi`} label="Kişi başı ciro" />
+                    <WaiterStat icon={<Clock size={16} />} value={fmtDuration(w.avgServiceTime)} label="Ortalama servis süresi" />
+                    <WaiterStat icon={<Ban size={16} />} value={`%${(w.cancelRate ?? 0).toFixed(1)}`} label="İptal oranı" danger={w.cancelRate > 10} />
                   </div>
                 </div>
               )

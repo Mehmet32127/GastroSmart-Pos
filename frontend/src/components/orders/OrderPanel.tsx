@@ -179,24 +179,24 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
         {view === 'order' ? (
           <>
             {/* Başlık */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex-shrink-0">
-              <div>
-                <h2 className="font-display font-bold text-[var(--color-text)] text-2xl">{table.name}</h2>
+            <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex-shrink-0">
+              <div className="min-w-0">
+                <h2 className="font-display font-bold text-[var(--color-text)] text-xl sm:text-2xl truncate">{table.name}</h2>
                 <p className="text-sm text-[var(--color-text-muted)] font-body mt-0.5">
                   {activeItems.length === 0 ? 'Henüz sipariş yok' : `${activeItems.length} ürün`}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 {/* Masayı İptal Et */}
                 {!cancelConfirm ? (
                   <button onClick={() => setCancelConfirm(true)}
                     title="Masayı İptal Et"
-                    className="p-3 rounded-2xl text-[var(--color-text-muted)] hover:bg-red-500/10 hover:text-red-400 transition-colors">
+                    className="p-2.5 sm:p-3 rounded-2xl text-[var(--color-text-muted)] hover:bg-red-500/10 hover:text-red-400 transition-colors">
                     <Ban size={20} />
                   </button>
                 ) : (
-                  <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 rounded-2xl px-3 py-2">
-                    <span className="text-sm text-red-400 font-body font-medium">Masayı iptal et?</span>
+                  <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 rounded-2xl px-2 sm:px-3 py-2">
+                    <span className="hidden sm:inline text-sm text-red-400 font-body font-medium">Masayı iptal et?</span>
                     <button onClick={handleCancelOrder} disabled={cancelLoading}
                       className="px-3 py-1 rounded-xl bg-red-500 text-white text-xs font-bold hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
                       {cancelLoading ? '...' : 'Evet'}
@@ -208,13 +208,13 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
                   </div>
                 )}
                 <button onClick={onClose}
-                  className="p-3 rounded-2xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] transition-colors">
+                  className="p-2.5 sm:p-3 rounded-2xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] transition-colors">
                   <X size={22} />
                 </button>
                 <button onClick={() => setView('menu')}
-                  className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-base font-semibold hover:brightness-110 transition-all active:scale-95">
-                  <Plus size={20} />
-                  Ürün Ekle
+                  className="flex items-center gap-2 px-3 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-sm sm:text-base font-semibold hover:brightness-110 transition-all active:scale-95">
+                  <Plus size={20} className="flex-shrink-0" />
+                  <span className="hidden sm:inline">Ürün Ekle</span>
                 </button>
               </div>
             </div>

@@ -39,6 +39,13 @@ const SOUND_PATTERNS: Record<SoundType, Array<{ freq: number; ms: number; delay:
 // Global AudioContext — sadece bir tane, unlock state'i tüm component'lerle paylaşılır
 let globalCtx: AudioContext | null = null
 
+// Dedupe: aynı ses tipi çok kısa aralıkta birden çok kez tetiklenirse (örn.
+// masaya ilk sipariş eklenince backend hem 'order:created' hem
+// 'order:item:added' yayıyor → iki bip) tek bip çal. Modül seviyesinde tutulur
+// ki farklı component'lerdeki useSound örnekleri aynı pencereyi paylaşsın.
+const lastPlayedAt: Record<string, number> = {}
+const DEDUPE_MS = 700
+
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null
   if (!globalCtx) {
@@ -99,6 +106,12 @@ export function useSound() {
 
   const play = useCallback((type: SoundType = 'notification') => {
     if (!prefs.soundEnabled) return
+
+    // Aynı tip ses DEDUPE_MS içinde tekrar istenirse yut (çift bip önlenir)
+    const nowMs = Date.now()
+    if (nowMs - (lastPlayedAt[type] ?? 0) < DEDUPE_MS) return
+    lastPlayedAt[type] = nowMs
+
     const ctx = getCtx()
     if (!ctx) return
 
