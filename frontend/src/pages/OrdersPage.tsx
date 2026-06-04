@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Clock, RefreshCw, ShoppingBag, AlertTriangle, DollarSign, Package, History, Receipt } from 'lucide-react'
-import { PaymentModal } from '@/components/orders/PaymentModal'
 import { Spinner, EmptyState } from '@/components/ui/common'
 import { ordersApi } from '@/api/orders'
 import { formatCurrency, cn } from '@/utils/format'
-import { useAuthStore } from '@/store/authStore'
 import type { Order } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -25,9 +23,6 @@ export const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [paymentOrder, setPaymentOrder] = useState<Order | null>(null)
-  // Sadece kasiyer/sahibi ödeme alır — garson/müdür için karte tıklama bilgi ver
-  const canCloseOrder = useAuthStore((s) => s.hasRole(['admin', 'cashier']))
 
   const loadOrders = useCallback(async () => {
     try {
@@ -53,11 +48,6 @@ export const OrdersPage: React.FC = () => {
     setRefreshing(true)
     await loadOrders()
     setRefreshing(false)
-  }
-
-  const handlePaymentSuccess = () => {
-    setPaymentOrder(null)
-    loadOrders()
   }
 
   const handleApprove = async (e: React.MouseEvent, orderId: string) => {
@@ -113,7 +103,7 @@ export const OrdersPage: React.FC = () => {
           <div>
             <h1 className="text-lg font-bold font-display text-[var(--color-text)]">Aktif Siparişler</h1>
             <p className="text-xs text-[var(--color-text-muted)] font-body">
-              {orders.length} açık sipariş
+              {orders.length} açık sipariş · takip ekranı (ödeme için <span className="text-[var(--color-accent)] font-medium">Kasa</span>)
               {lateCount > 0 && <> · <span className="text-red-400 font-semibold">{lateCount} geç</span></>}
               {totalOpen > 0 && <> · <span className="text-[var(--color-accent)] font-semibold">{formatCurrency(totalOpen)}</span></>}
             </p>
@@ -156,16 +146,10 @@ export const OrdersPage: React.FC = () => {
                 ).getTime() > 30 * 60 * 1000
 
                 return (
-                  <button key={order.id} onClick={() => {
-                    if (!canCloseOrder) {
-                      toast('Hesap kapatma yetkisi sadece Kasiyer ve Sahibinde', { icon: 'ℹ️' })
-                      return
-                    }
-                    setPaymentOrder(order)
-                  }}
+                  <div key={order.id}
                     className={cn(
                       'flex flex-col p-4 rounded-2xl border text-left transition-all duration-200',
-                      'bg-[var(--color-surface)] hover:bg-[var(--color-surface2)] hover:-translate-y-0.5 active:scale-95',
+                      'bg-[var(--color-surface)]',
                       isLate ? 'border-red-500/30' : 'border-[var(--color-border)]'
                     )}>
                     <div className="flex items-start justify-between mb-3">
@@ -216,18 +200,13 @@ export const OrdersPage: React.FC = () => {
                         {order.source === 'customer' ? '🔔 Müşteri Siparişi — Onayla' : '✓ Hazırlığa Onayla'}
                       </span>
                     )}
-                  </button>
+                  </div>
                 )
               })}
             </div>
           )}
         </div>
       </div>
-
-      {paymentOrder && (
-        <PaymentModal isOpen={!!paymentOrder} onClose={() => setPaymentOrder(null)}
-          order={paymentOrder} onSuccess={handlePaymentSuccess} />
-      )}
     </>
   )
 }

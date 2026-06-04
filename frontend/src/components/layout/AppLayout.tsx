@@ -116,14 +116,14 @@ export const AppLayout: React.FC = () => {
   // Boot validate edilirken kısa loading — token reddedilirse otomatik logout olur
   if (validating) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[var(--color-bg)]">
+      <div className="flex h-full items-center justify-center bg-[var(--color-bg)]">
         <div className="animate-spin w-6 h-6 border-2 border-[var(--color-accent)] border-t-transparent rounded-full" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--color-bg)] font-body relative">
+    <div className="flex h-full overflow-hidden bg-[var(--color-bg)] font-body relative">
       {/* Desktop sidebar — md ve üzeri */}
       <div className="hidden md:flex">
         <Sidebar

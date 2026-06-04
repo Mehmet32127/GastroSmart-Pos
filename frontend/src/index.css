@@ -164,8 +164,13 @@ html, body, #root {
 /* ─── No flash on theme load ─────────────────────────────────────────────────── */
 #root {
   background-color: var(--color-bg);
-  height: 100vh;
+  height: 100vh;        /* fallback */
+  height: 100dvh;       /* mobil: adres çubuğunu hesaba katan dinamik yükseklik */
   width: 100vw;
+  width: 100dvw;
   overflow: hidden;
 }
-button { min-height: 44px; padding-left: 16px !important; padding-right: 16px !important; }
+/* NOT: Eskiden burada global "button { min-height:44px; padding:16px !important }"
+   vardı. Bu kural kompakt/ikon butonları (toolbar S/M/L, +/−, yuvarlak collapse
+   oku) şişirip taşırıyor ve oval yapıyordu. Boyutlandırma artık her komponentin
+   kendi Tailwind sınıflarında (önemli dokunma hedefleri w-11 h-11 / py-4). */

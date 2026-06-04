@@ -63,7 +63,7 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         className={cn(
           'relative w-full z-10 bg-[var(--color-surface)] border border-[var(--color-border)]',
-          'rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-bounce-in',
+          'rounded-2xl shadow-2xl flex flex-col max-h-[90vh] max-h-[90dvh] animate-bounce-in',
           sizeClasses[size],
           className
         )}

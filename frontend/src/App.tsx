@@ -13,6 +13,7 @@ import { AdminLoginPage }       from '@/pages/admin/AdminLoginPage'
 import { AdminDashboardPage }   from '@/pages/admin/AdminDashboardPage'
 import { TablesPage }       from '@/pages/TablesPage'
 import { OrdersPage }       from '@/pages/OrdersPage'
+import { CashierPage }      from '@/pages/CashierPage'
 import { ReservationsPage } from '@/pages/ReservationsPage'
 import { HistoryPage }      from '@/pages/HistoryPage'
 import { ReportsPage }      from '@/pages/ReportsPage'
@@ -137,6 +138,14 @@ export const App: React.FC = () => {
         <Route element={<AppLayout />}>
           <Route index element={<TablesPage />} />
           <Route path="/orders" element={<OrdersPage />} />
+
+          {/* Kasa: ödeme alma — sadece kasiyer + sahibi */}
+          <Route path="/cashier" element={
+            <RoleGuard roles={['admin', 'cashier']}>
+              <CashierPage />
+            </RoleGuard>
+          } />
+
           <Route path="/reservations" element={<ReservationsPage />} />
           <Route path="/history" element={<HistoryPage />} />
 

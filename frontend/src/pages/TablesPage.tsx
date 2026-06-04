@@ -475,6 +475,13 @@ export const TablesPage: React.FC = () => {
                     onStatusChange={mgmtMode ? undefined : setStatusTable} />
                   {mgmtMode && canManage && (
                     <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {user?.tenantSlug && (
+                        <button onClick={() => setQrTable(table)}
+                          title="QR Menü kodunu göster / yazdır"
+                          className="p-1.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors shadow-sm">
+                          <QrCode size={11} />
+                        </button>
+                      )}
                       <button onClick={() => openTableModal(table)}
                         className="p-1.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors shadow-sm">
                         <Edit2 size={11} />
@@ -699,17 +706,9 @@ export const TablesPage: React.FC = () => {
               className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] text-[var(--color-text)] font-body text-sm hover:border-blue-500/40 transition-colors">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Temizleniyor
             </button>
-            <button onClick={() => handleSetStatus('reserved')}
-              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] text-[var(--color-text)] font-body text-sm hover:border-amber-500/40 transition-colors">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Rezerve
-            </button>
+            {/* Rezervasyon buradan yapılmaz — kayıtsız "reserved" orphan durum yaratıyordu.
+                Gerçek rezervasyon (isim/saat/kod) Rezervasyonlar sayfasından oluşturulur. */}
           </div>
-        )}
-        {user?.tenantSlug && (
-          <button onClick={() => { setQrTable(statusTable); setStatusTable(null) }}
-            className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)]/40 text-sm font-body transition-colors">
-            <QrCode size={15} /> QR Menü Kodunu Göster
-          </button>
         )}
       </Modal>
 

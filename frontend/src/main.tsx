@@ -19,7 +19,24 @@ import { registerSW } from 'virtual:pwa-register'
 import toast from 'react-hot-toast'
 
 const updateSW = registerSW({
+  // Açık kalan POS sekmesi de yeni deploy'u fark etsin diye periyodik kontrol.
+  // SW script'i için küçük bir koşullu istek; yeni sürüm varsa onNeedRefresh tetiklenir.
+  onRegisteredSW(_swUrl, registration) {
+    if (registration) {
+      setInterval(() => { registration.update().catch(() => {}) }, 60_000)
+    }
+  },
   onNeedRefresh() {
+    // Kullanıcı bir input/textarea'da YAZIYORSA veri kaybı olmasın → toast göster.
+    // Yazmıyorsa (boş ekran/izleme) sessizce güncelle + reload → "otomatik gelsin".
+    const el = document.activeElement as HTMLElement | null
+    const typing = !!el && (
+      el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
+    )
+    if (!typing) {
+      updateSW(true)
+      return
+    }
     toast(
       (t) => (
         // Sağ altta küçük kart — modal değil, kullanıcıyı engellemez

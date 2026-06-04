@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutGrid, ShoppingBag, CalendarDays, Clock, BarChart3,
   UtensilsCrossed, Users, Palette, Settings, LogOut, Lock, Calculator,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Wallet,
 } from 'lucide-react'
 import { cn } from '@/utils/format'
 import { useAuth } from '@/hooks/useAuth'
@@ -26,6 +26,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { path: '/',             label: 'Masalar',       icon: <LayoutGrid size={22} /> },
   { path: '/orders',       label: 'Siparişler',    icon: <ShoppingBag size={22} /> },
+  { path: '/cashier',      label: 'Kasa',          icon: <Wallet size={22} />,         roles: ['admin', 'cashier'] },
   { path: '/reservations', label: 'Rezervasyonlar',icon: <CalendarDays size={22} /> },
   { path: '/history',      label: 'Geçmiş',        icon: <Clock size={22} /> },
   { path: '/reports',      label: 'Raporlar',      icon: <BarChart3 size={22} />,      roles: ['admin', 'manager', 'cashier'] },
