@@ -101,9 +101,12 @@ export function useSocket() {
       })
     })
 
-    // Yeni sipariş açıldı
+    // Yeni sipariş açıldı (boş masa kabuğu) — SES YOK.
+    // Masaya ilk ürün eklenince OrderPanel önce create (order:created) sonra
+    // addItem (order:item:added) çağırıyor → ikisi de bip atınca ÇİFT SES oluyordu.
+    // Bip yalnızca order:item:added'da (gerçek ürün eklendiğinde) çalsın; böylece
+    // bağlantı hızından bağımsız her zaman TEK ses olur. Görsel bildirim kalsın.
     socket.on('order:created', (order: Order) => {
-      play('notification')
       addNotification({
         type:    'order',
         title:   'Sipariş Açıldı',
