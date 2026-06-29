@@ -14,6 +14,7 @@ import { useLock } from '@/hooks/useLock'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useSettingsStore } from '@/store/settingsStore'
+import { usePrinterStore } from '@/store/printerStore'
 import { setActiveCurrency } from '@/utils/format'
 import { authApi } from '@/api/auth'
 
@@ -57,6 +58,9 @@ export const AppLayout: React.FC = () => {
 
   // Kişisel tercihler hook'u — tema + ses + kısayollar
   useUserPreferences()
+
+  // Adisyon yazıcısı — durum dinleyici + izinli yazıcıya sessiz yeniden bağlanma
+  useEffect(() => { usePrinterStore.getState().init() }, [])
 
   // Klavye kısayolu modal'ı + hesap makinesi modal'ı
   const [shortcutsOpen, setShortcutsOpen] = useState(false)

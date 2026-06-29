@@ -15,6 +15,7 @@ export interface PublicMenuItem {
   name: string
   description: string
   price: number
+  imageUrl: string
   soldOut: boolean
   tags: string[]
 }

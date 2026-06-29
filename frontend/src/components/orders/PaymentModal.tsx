@@ -4,6 +4,9 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { formatCurrency, cn } from '@/utils/format'
 import { ordersApi } from '@/api/orders'
+import { usePrinterStore } from '@/store/printerStore'
+import { useSettingsStore } from '@/store/settingsStore'
+import { buildBillBlocks } from '@/utils/receipt'
 import type { Order } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -69,6 +72,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, ord
         note: note || undefined,
       })
       toast.success('Ödeme tamamlandı!')
+
+      // Yazıcı bağlıysa hesap fişini otomatik bas (bağlı değilse sessiz geç —
+      // her ödemede yazdırma penceresi açıp kullanıcıyı rahatsız etmeyelim).
+      const printer = usePrinterStore.getState()
+      if (printer.status === 'connected') {
+        try {
+          const billOrder = { ...order, items, subtotal, total, discount, discountType, paymentMethod: method } as Order
+          await printer.print(buildBillBlocks(billOrder, { restaurantName: useSettingsStore.getState().restaurantName }), { cut: true })
+        } catch { toast.error('Adisyon basılamadı (ödeme tamam)') }
+      }
+
       onSuccess()
     } catch {
       toast.error('Ödeme tamamlanamadı')

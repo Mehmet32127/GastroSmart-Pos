@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Plus, Minus, Trash2, MessageSquare, X, ChevronLeft, ShoppingBag, Ban, StickyNote, Check } from 'lucide-react'
+import { Search, Plus, Minus, Trash2, MessageSquare, X, ChevronLeft, ShoppingBag, Ban, StickyNote, Check, Printer } from 'lucide-react'
+import { usePrinterStore } from '@/store/printerStore'
+import { buildKitchenBlocks } from '@/utils/receipt'
 import { cn, formatCurrency } from '@/utils/format'
 import { Input } from '@/components/ui/Input'
 import { useOrderStore } from '@/store/orderStore'
@@ -168,6 +170,15 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
 
   const activeItems = currentOrder?.items.filter(i => i.status !== 'cancelled') || []
 
+  // Mutfak sipariş fişi — yazıcı bağlıysa raster, değilse yazdırma penceresi
+  const printKitchen = async () => {
+    if (!currentOrder) return
+    try {
+      const m = await usePrinterStore.getState().print(buildKitchenBlocks(currentOrder), { cut: true })
+      toast.success(m === 'bluetooth' ? 'Mutfak fişi gönderildi' : 'Yazdırma penceresi açıldı', { icon: '🍳' })
+    } catch { toast.error('Fiş basılamadı') }
+  }
+
   return (
     // Backdrop — boşluğa tıklayınca kapat
     <div className="fixed inset-0 z-50 flex items-stretch justify-end" onClick={onClose}>
@@ -187,6 +198,14 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
                 </p>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                {/* Mutfak fişi — ürün varsa */}
+                {activeItems.length > 0 && !cancelConfirm && (
+                  <button onClick={printKitchen}
+                    title="Mutfak fişi bas"
+                    className="p-2.5 sm:p-3 rounded-2xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface2)] hover:text-[var(--color-accent)] transition-colors">
+                    <Printer size={20} />
+                  </button>
+                )}
                 {/* Masayı İptal Et */}
                 {!cancelConfirm ? (
                   <button onClick={() => setCancelConfirm(true)}
@@ -381,6 +400,11 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
                         'active:scale-95 active:border-[var(--color-accent)]',
                         'disabled:opacity-40 disabled:cursor-not-allowed'
                       )}>
+                      {item.imageUrl && (
+                        <div className="-mx-4 -mt-4 mb-2 h-20 overflow-hidden rounded-t-2xl">
+                          <img src={item.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      )}
                       <p className="text-sm font-semibold text-[var(--color-text)] font-body leading-snug mb-1.5 line-clamp-2">{item.name}</p>
                       <p className="text-base font-bold text-[var(--color-accent)] font-mono mt-auto">{formatCurrency(item.price)}</p>
                     </button>

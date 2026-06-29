@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Save, Building2, Phone, FileText, Globe, Receipt, Printer, Download, UserCircle, Camera, Trash2, Sun, Moon, Monitor, Volume2, VolumeX, Keyboard, Lock } from 'lucide-react'
+import { Save, Building2, Phone, FileText, Globe, Receipt, Download, UserCircle, Camera, Trash2, Sun, Moon, Monitor, Volume2, VolumeX, Keyboard, Lock } from 'lucide-react'
 import { Card } from '@/components/ui/common'
 import { Button } from '@/components/ui/Button'
 import { settingsApi } from '@/api/settings'
@@ -10,6 +10,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
 import client from '@/api/client'
 import { CONFIG } from '@/config'
+import { PrinterCard } from '@/components/settings/PrinterCard'
+import { usePrinterStore } from '@/store/printerStore'
 import toast from 'react-hot-toast'
 
 interface SettingsData {
@@ -95,11 +97,8 @@ export const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
 
-  // Yazıcı kağıt boyutu — DB'de saklanır (tüm cihazlarda tutarlı), ayrıca
-  // localStorage'a da yazılır (offline cihazda hızlı okuma için)
-  const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>(() =>
-    (localStorage.getItem('gastro_paper_width') as '58mm' | '80mm') ?? '80mm'
-  )
+  // Kağıt boyutu artık tek yerde: Adisyon Yazıcısı kartı (printerStore).
+  // Burada sadece DB senkronu yapılır (yükleme/kaydetme).
   const [downloading, setDownloading] = useState(false)
   const isAdmin = useAuthStore((s) => s.hasRole(['admin']))
   const user = useAuthStore((s) => s.user)
@@ -160,10 +159,9 @@ export const SettingsPage: React.FC = () => {
             currency:       s.currency ?? 'TRY',
             timezone:       s.timezone ?? 'Europe/Istanbul',
           })
-          // DB'deki paperWidth localStorage'dan ÜSTÜN — yeni cihazda da tutarlı
+          // DB'deki kağıt boyutu → tek kaynağa (printerStore) yaz
           if (s.paperWidth === '58mm' || s.paperWidth === '80mm') {
-            setPaperWidth(s.paperWidth)
-            localStorage.setItem('gastro_paper_width', s.paperWidth)
+            usePrinterStore.getState().setPaper(s.paperWidth)
           }
         }
       })
@@ -207,9 +205,8 @@ export const SettingsPage: React.FC = () => {
         receiptFooter:  data.receiptFooter.trim(),
         currency:       data.currency,
         timezone:       data.timezone,
-        paperWidth,
+        paperWidth:     usePrinterStore.getState().paper,
       })
-      localStorage.setItem('gastro_paper_width', paperWidth)
       setActiveCurrency(data.currency)
       window.dispatchEvent(new CustomEvent('settings:updated'))
 
@@ -313,6 +310,9 @@ export const SettingsPage: React.FC = () => {
       {/* Restoran Logosu — sadece admin değiştirebilir */}
       <RestaurantLogoCard />
 
+      {/* Adisyon yazıcısı (Bluetooth) */}
+      <PrinterCard />
+
       {/* Restaurant Info */}
       <Card>
         <h2 className="text-sm font-semibold font-display text-[var(--color-text)] mb-4 flex items-center gap-2">
@@ -407,38 +407,6 @@ export const SettingsPage: React.FC = () => {
             >
               {TIMEZONES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
-          </div>
-        </div>
-      </Card>
-
-      {/* Yazıcı Ayarları */}
-      <Card>
-        <h2 className="text-sm font-semibold font-display text-[var(--color-text)] mb-4 flex items-center gap-2">
-          <Printer size={16} className="text-[var(--color-accent)]" /> Termal Yazıcı
-        </h2>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-[var(--color-text-muted)] font-body">Kağıt Boyutu</label>
-            <div className="flex gap-2">
-              {(['58mm', '80mm'] as const).map(w => (
-                <button key={w} onClick={() => setPaperWidth(w)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-body border transition-all ${
-                    paperWidth === w
-                      ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)] border-[var(--color-accent)]/30'
-                      : 'bg-[var(--color-surface2)] text-[var(--color-text-muted)] border-[var(--color-border)] hover:text-[var(--color-text)]'
-                  }`}>
-                  {w}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] p-3 text-xs text-[var(--color-text-muted)] font-body space-y-1">
-            <p className="font-semibold text-[var(--color-text)]">Termal Yazıcı Kullanımı</p>
-            <p>1. Fiş ekranında <strong>Yazdır</strong> butonuna tıklayın</p>
-            <p>2. Yazıcı listesinden termal yazıcınızı seçin</p>
-            <p>3. Kağıt boyutunu <strong>{paperWidth}</strong> olarak ayarlayın</p>
-            <p>4. Kenar boşluklarını <strong>Yok</strong> yapın</p>
           </div>
         </div>
       </Card>

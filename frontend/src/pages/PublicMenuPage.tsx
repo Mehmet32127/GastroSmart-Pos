@@ -148,6 +148,10 @@ export const PublicMenuPage: React.FC = () => {
           const qty = cart[it.id]?.qty ?? 0
           return (
             <div key={it.id} className={`flex items-center gap-3 p-3 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] ${it.soldOut ? 'opacity-50' : ''}`}>
+              {it.imageUrl && (
+                <img src={it.imageUrl} alt={it.name} loading="lazy"
+                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-[var(--color-border)]" />
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[var(--color-text)] font-body">{it.name}</p>
                 {it.description && <p className="text-xs text-[var(--color-text-muted)] font-body line-clamp-2 mt-0.5">{it.description}</p>}

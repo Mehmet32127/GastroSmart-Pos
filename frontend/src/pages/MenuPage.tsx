@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { Plus, Edit2, Trash2, Search, AlertTriangle, Package, ClipboardList } from 'lucide-react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { Plus, Edit2, Trash2, Search, AlertTriangle, Package, ClipboardList, ImagePlus, X, Image as ImageIcon } from 'lucide-react'
+import { fileToResizedDataUrl } from '@/utils/image'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -27,6 +28,7 @@ const itemSchema = z.object({
   stock: z.preprocess(emptyToUndefined, z.coerce.number().min(0).optional()),
   unit: z.string().default('adet'),
   description: z.string().optional(),
+  imageUrl: z.string().optional(),
   active: z.boolean().default(true),
 })
 
@@ -52,10 +54,33 @@ export const MenuPage: React.FC = () => {
   const [bulkSaving, setBulkSaving] = useState(false)
   const canManageStock = useAuthStore((s) => s.hasRole(['admin', 'manager']))
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ItemForm>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ItemForm>({
     resolver: zodResolver(itemSchema),
     defaultValues: { tax: 8, unit: 'adet', active: true },
   })
+
+  // Ürün görseli — dosya seçilince tarayıcıda küçültülüp base64 olarak forma yazılır
+  const imageFileRef = useRef<HTMLInputElement>(null)
+  const [imageProcessing, setImageProcessing] = useState(false)
+  const imagePreview = watch('imageUrl')
+
+  const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) { toast.error('Lütfen bir görsel dosyası seçin'); return }
+    setImageProcessing(true)
+    try {
+      const dataUrl = await fileToResizedDataUrl(file)
+      setValue('imageUrl', dataUrl, { shouldDirty: true })
+    } catch {
+      toast.error('Görsel işlenemedi')
+    } finally {
+      setImageProcessing(false)
+      if (imageFileRef.current) imageFileRef.current.value = ''
+    }
+  }
+
+  const removeImage = () => setValue('imageUrl', '', { shouldDirty: true })
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -85,10 +110,11 @@ export const MenuPage: React.FC = () => {
         stock:       item.stock ?? undefined,
         unit:        item.unit ?? 'adet',
         description: item.description ?? '',
+        imageUrl:    item.imageUrl ?? '',
         active:      item.active,
       })
     } else {
-      reset({ tax: 8, unit: 'adet', active: true })
+      reset({ tax: 8, unit: 'adet', active: true, imageUrl: '' })
     }
     setItemModalOpen(true)
   }
@@ -333,6 +359,11 @@ export const MenuPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {filtered.map((item) => (
                 <Card key={item.id} hover className="!p-3">
+                  {item.imageUrl && (
+                    <div className="w-full h-24 -mx-3 -mt-3 mb-2.5 overflow-hidden rounded-t-2xl" style={{ width: 'calc(100% + 1.5rem)' }}>
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                    </div>
+                  )}
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-[var(--color-text)] font-body truncate">{item.name}</p>
@@ -428,6 +459,35 @@ export const MenuPage: React.FC = () => {
             <Input label="Birim" placeholder="adet" {...register('unit')} />
           </div>
           <Textarea label="Açıklama" {...register('description')} />
+
+          {/* Ürün görseli — tarayıcıda küçültülüp base64 olarak saklanır */}
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-[var(--color-text-muted)] font-body">Ürün Görseli</label>
+            <input type="hidden" {...register('imageUrl')} />
+            <input ref={imageFileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImagePick} />
+            {imagePreview ? (
+              <div className="relative w-full h-36 rounded-xl overflow-hidden border border-[var(--color-border)] group">
+                <img src={imagePreview} alt="Önizleme" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                  <button type="button" onClick={() => imageFileRef.current?.click()}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--color-surface)]/90 text-[var(--color-text)] text-xs font-body flex items-center gap-1">
+                    <ImagePlus size={13} /> Değiştir
+                  </button>
+                  <button type="button" onClick={removeImage}
+                    className="px-3 py-1.5 rounded-lg bg-red-500/90 text-white text-xs font-body flex items-center gap-1">
+                    <X size={13} /> Kaldır
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => imageFileRef.current?.click()} disabled={imageProcessing}
+                className="w-full h-36 rounded-xl border-2 border-dashed border-[var(--color-border)] flex flex-col items-center justify-center gap-1.5 text-[var(--color-text-muted)] hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent)] transition-colors disabled:opacity-50">
+                {imageProcessing ? <Spinner size={20} /> : <ImageIcon size={22} />}
+                <span className="text-xs font-body">{imageProcessing ? 'İşleniyor...' : 'Görsel ekle (otomatik küçültülür)'}</span>
+              </button>
+            )}
+          </div>
+
           <label className="flex items-center gap-2 text-sm font-body text-[var(--color-text-muted)] cursor-pointer">
             <input type="checkbox" {...register('active')} className="rounded" />
             Aktif
