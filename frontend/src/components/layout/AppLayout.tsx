@@ -144,7 +144,7 @@ export const AppLayout: React.FC = () => {
 
       {/* Mobile sidebar — drawer */}
       <div
-        className={`md:hidden fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out ${
+        className={`md:hidden fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

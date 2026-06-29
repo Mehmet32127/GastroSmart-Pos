@@ -205,7 +205,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={cn(
           'absolute -right-3.5 top-20 z-10',
           'w-7 h-7 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]',
-          'flex items-center justify-center',
+          // Sadece masaüstü sidebar'da (md+) göster — mobil drawer'da (<md) anlamsız
+          // ve kapalıyken ekran kenarından yarım görünüyordu.
+          'hidden md:flex items-center justify-center',
           'text-[var(--color-text-muted)] hover:text-[var(--color-accent)]',
           'hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-accent)]/10',
           'transition-all duration-200 shadow-card'

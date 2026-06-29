@@ -173,7 +173,7 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-stretch justify-end" onClick={onClose}>
       {/* Panel — tablet/mobilde TAM EKRAN (sipariş alırken masa planına bakılmaz),
           desktop'ta (lg+) yarım ekran (yan yana masa planı + panel). */}
-      <div className="flex flex-col bg-[var(--color-bg)] w-full max-w-full lg:max-w-2xl h-full shadow-2xl"
+      <div className="flex flex-col bg-[var(--color-bg)] w-full max-w-full lg:max-w-2xl h-full shadow-2xl animate-slide-in-right"
         onClick={e => e.stopPropagation()}>
 
         {view === 'order' ? (
