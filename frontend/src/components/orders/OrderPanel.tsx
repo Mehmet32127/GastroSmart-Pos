@@ -177,8 +177,8 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
   const printKitchen = async () => {
     if (!currentOrder) return
     try {
-      const m = await usePrinterStore.getState().print(buildKitchenBlocks(currentOrder), { cut: true })
-      toast.success(m === 'bluetooth' ? 'Mutfak fişi gönderildi' : 'Yazdırma penceresi açıldı', { icon: '🍳' })
+      const m = await usePrinterStore.getState().print(buildKitchenBlocks(currentOrder), { role: 'kitchen', cut: true })
+      toast.success(m === 'bluetooth' ? 'Mutfak yazıcısına gönderildi' : 'Yazdırma penceresi açıldı', { icon: '🍳' })
     } catch { toast.error('Fiş basılamadı') }
   }
 

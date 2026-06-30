@@ -76,10 +76,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, ord
       // Yazıcı bağlıysa hesap fişini otomatik bas (bağlı değilse sessiz geç —
       // her ödemede yazdırma penceresi açıp kullanıcıyı rahatsız etmeyelim).
       const printer = usePrinterStore.getState()
-      if (printer.status === 'connected') {
+      if (printer.cashier.status === 'connected') {
         try {
           const billOrder = { ...order, items, subtotal, total, discount, discountType, paymentMethod: method } as Order
-          await printer.print(buildBillBlocks(billOrder, { restaurantName: useSettingsStore.getState().restaurantName }), { cut: true })
+          await printer.print(buildBillBlocks(billOrder, { restaurantName: useSettingsStore.getState().restaurantName }), { role: 'cashier', cut: true })
         } catch { toast.error('Adisyon basılamadı (ödeme tamam)') }
       }
 

@@ -1,24 +1,28 @@
 import { create } from 'zustand'
-import { btPrinter, type PrinterStatus } from '@/services/btPrinter'
+import { printers, type PrinterStatus, type PrinterRole } from '@/services/btPrinter'
 import { buildPrintPayload, type PaperWidth } from '@/utils/escpos'
 import { renderReceiptCanvas, blocksToHtml, type ReceiptBlock } from '@/utils/receipt'
 
 type PrintMethod = 'bluetooth' | 'system'
 
+interface RoleState { status: PrinterStatus; deviceName: string | null }
+
 interface PrinterState {
-  status: PrinterStatus
-  deviceName: string | null
+  kitchen: RoleState
+  cashier: RoleState
   paper: PaperWidth
   supported: boolean
   init: () => void
-  connect: () => Promise<void>
-  disconnect: () => void
+  connect: (role: PrinterRole) => Promise<void>
+  disconnect: (role: PrinterRole) => void
   setPaper: (p: PaperWidth) => void
-  /** Fişi bas — BT bağlıysa raster, değilse sistem yazdırma diyaloğu. Yöntemi döner. */
-  print: (blocks: ReceiptBlock[], opts?: { cut?: boolean }) => Promise<PrintMethod>
+  /**
+   * Fişi bas. role = hedef yazıcı (kitchen/cashier). O rol bağlıysa o yazıcıya
+   * raster basar; bağlı değilse sistem yazdırma diyaloğuna düşer. Yöntemi döner.
+   */
+  print: (blocks: ReceiptBlock[], opts: { role: PrinterRole; cut?: boolean }) => Promise<PrintMethod>
 }
 
-// Tüm uygulamada tek kağıt-boyutu kaynağı (eski "Termal Yazıcı" ayarıyla ortak)
 const PAPER_KEY = 'gastro_paper_width'
 
 let initialized = false
@@ -36,27 +40,26 @@ function printViaSystem(html: string) {
 }
 
 export const usePrinterStore = create<PrinterState>((set, get) => ({
-  status: 'disconnected',
-  deviceName: null,
+  kitchen: { status: 'disconnected', deviceName: null },
+  cashier: { status: 'disconnected', deviceName: null },
   paper: ((): PaperWidth => {
     const p = typeof localStorage !== 'undefined' ? localStorage.getItem(PAPER_KEY) : null
     return p === '80mm' ? '80mm' : '58mm'
   })(),
-  supported: btPrinter.supported,
+  supported: printers.kitchen.supported,
 
   init: () => {
     if (initialized) return
     initialized = true
-    btPrinter.onChange((status, deviceName) => set({ status, deviceName }))
-    // izin verilmiş yazıcıya sessizce yeniden bağlanmayı dene
-    btPrinter.tryReconnect().catch(() => {})
+    ;(['kitchen', 'cashier'] as PrinterRole[]).forEach((role) => {
+      printers[role].onChange((status, deviceName) => set({ [role]: { status, deviceName } } as Pick<PrinterState, PrinterRole>))
+      printers[role].tryReconnect().catch(() => {})
+    })
   },
 
-  connect: async () => {
-    await btPrinter.connect()
-  },
+  connect: async (role) => { await printers[role].connect() },
 
-  disconnect: () => btPrinter.disconnect(),
+  disconnect: (role) => printers[role].disconnect(),
 
   setPaper: (p) => {
     try { localStorage.setItem(PAPER_KEY, p) } catch { /* private mode */ }
@@ -64,11 +67,12 @@ export const usePrinterStore = create<PrinterState>((set, get) => ({
   },
 
   print: async (blocks, opts) => {
-    const { paper, status } = get()
-    if (status === 'connected') {
+    const { paper } = get()
+    const printer = printers[opts.role]
+    if (printer.status === 'connected') {
       const canvas = renderReceiptCanvas(blocks, paper)
-      const payload = buildPrintPayload(canvas, { cut: opts?.cut })
-      await btPrinter.write(payload)
+      const payload = buildPrintPayload(canvas, { cut: opts.cut })
+      await printer.write(payload)
       return 'bluetooth'
     }
     printViaSystem(blocksToHtml(blocks, paper))

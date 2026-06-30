@@ -1,9 +1,10 @@
-// Web Bluetooth (BLE) termal yazıcı servisi — modele kilitlenmez.
+// Web Bluetooth (BLE) termal yazıcı servisi — modele kilitlenmez, ROL başına ayrı.
+//
+// Restoran iki yazıcı kullanabilir: "kitchen" (mutfak) ve "cashier" (kasa).
+// Her rol için ayrı BtPrinter örneği → ayrı cihaz, ayrı bağlantı, ayrı hatırlama.
 //
 // Çalışma: kullanıcı cihazı seçer → GATT'a bağlanır → tüm servisleri tarayıp
 // YAZILABİLİR ilk karakteristiği bulur → ESC/POS baytlarını parça parça yazar.
-// Yaygın termal yazıcı servis UUID'leri optionalServices'e eklenir (acceptAllDevices
-// ile bunlara erişebilmek için listelenmeleri ZORUNLU).
 //
 // NOT: Web Bluetooth yalnızca BLE konuşur — Bluetooth Classic (SPP) yazıcılara
 // erişemez. Classic yazıcılar için Capacitor APK + native plugin gerekir.
@@ -17,9 +18,10 @@ const PRINTER_SERVICES = [
   'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
 ]
 
-const CHUNK = 180   // BLE paket sınırı için güvenli parça boyutu
-const CHUNK_DELAY = 18 // ms — yazıcı tamponu taşmasın
+const CHUNK = 180
+const CHUNK_DELAY = 18
 
+export type PrinterRole = 'kitchen' | 'cashier'
 export type PrinterStatus = 'disconnected' | 'connecting' | 'connected'
 
 interface Listener { (status: PrinterStatus, deviceName: string | null): void }
@@ -28,8 +30,13 @@ class BtPrinter {
   private device: BluetoothDevice | null = null
   private characteristic: BluetoothRemoteGATTCharacteristic | null = null
   private listeners = new Set<Listener>()
+  private storageKey: string
   status: PrinterStatus = 'disconnected'
   deviceName: string | null = null
+
+  constructor(role: PrinterRole) {
+    this.storageKey = `gastro_printer_id_${role}`
+  }
 
   get supported(): boolean {
     return typeof navigator !== 'undefined' && !!navigator.bluetooth
@@ -46,11 +53,10 @@ class BtPrinter {
 
   private setStatus(s: PrinterStatus) {
     this.status = s
-    if (s === 'disconnected') { this.characteristic = null }
+    if (s === 'disconnected') this.characteristic = null
     this.emit()
   }
 
-  /** Kullanıcıya cihaz seçtirip bağlanır (kullanıcı jesti içinde çağrılmalı). */
   async connect(): Promise<void> {
     if (!this.supported) throw new Error('Bu tarayıcı Web Bluetooth desteklemiyor (Chrome/Android gerekir).')
     this.setStatus('connecting')
@@ -66,12 +72,11 @@ class BtPrinter {
     }
   }
 
-  /** Daha önce izin verilmiş cihaza sessizce yeniden bağlanmayı dener. */
   async tryReconnect(): Promise<boolean> {
     if (!this.supported || !navigator.bluetooth?.getDevices) return false
     try {
       const devices = await navigator.bluetooth.getDevices!()
-      const prev = devices.find((d) => d.id === localStorage.getItem('gastro_printer_id'))
+      const prev = devices.find((d) => d.id === localStorage.getItem(this.storageKey))
       if (!prev) return false
       await this.attach(prev)
       return true
@@ -84,7 +89,6 @@ class BtPrinter {
     device.addEventListener('gattserverdisconnected', () => this.setStatus('disconnected'))
 
     const server = await device.gatt!.connect()
-    // Yazılabilir karakteristiği bul
     let writable: BluetoothRemoteGATTCharacteristic | null = null
     const services = await server.getPrimaryServices()
     for (const svc of services) {
@@ -100,16 +104,16 @@ class BtPrinter {
       throw new Error('Yazıcıda yazılabilir kanal bulunamadı (BLE termal yazıcı değil olabilir).')
     }
     this.characteristic = writable
-    try { localStorage.setItem('gastro_printer_id', device.id) } catch { /* private mode */ }
+    try { localStorage.setItem(this.storageKey, device.id) } catch { /* private mode */ }
     this.setStatus('connected')
   }
 
   disconnect(): void {
     try { this.device?.gatt?.disconnect() } catch { /* yoksay */ }
+    try { localStorage.removeItem(this.storageKey) } catch { /* private mode */ }
     this.setStatus('disconnected')
   }
 
-  /** ESC/POS bayt dizisini parça parça yazıcıya gönderir. */
   async write(data: Uint8Array): Promise<void> {
     const c = this.characteristic
     if (!c) throw new Error('Yazıcı bağlı değil')
@@ -123,4 +127,8 @@ class BtPrinter {
   }
 }
 
-export const btPrinter = new BtPrinter()
+// Rol başına tekil örnekler
+export const printers: Record<PrinterRole, BtPrinter> = {
+  kitchen: new BtPrinter('kitchen'),
+  cashier: new BtPrinter('cashier'),
+}
