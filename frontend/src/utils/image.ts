@@ -3,6 +3,17 @@
 // MongoDB'de string alanda saklanır. Backend body limiti 1 MB olduğundan
 // görseli tarayıcıda küçültüp sıkıştırıyoruz (payload + DB boyutu kontrol altında).
 
+import { CONFIG } from '@/config'
+
+/**
+ * Ürün görselinin URL'i — ayrı public görsel endpoint'i (lazy + tarayıcı cache).
+ * Hem POS/Menü (auth user.tenantSlug) hem QR menü (route slug) aynı endpoint'i kullanır.
+ */
+export function menuImageUrl(tenantSlug: string, id: string, version?: number): string {
+  const v = version ? `?v=${version}` : ''
+  return `${CONFIG.API_BASE}/api/public/${tenantSlug}/items/${id}/image${v}`
+}
+
 interface ResizeOpts {
   maxSize?: number   // en uzun kenar (px)
   quality?: number   // JPEG kalite 0..1

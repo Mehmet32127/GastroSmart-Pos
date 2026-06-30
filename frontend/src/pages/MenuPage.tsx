@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Plus, Edit2, Trash2, Search, AlertTriangle, Package, ClipboardList, ImagePlus, X, Image as ImageIcon } from 'lucide-react'
-import { fileToResizedDataUrl } from '@/utils/image'
+import { fileToResizedDataUrl, menuImageUrl } from '@/utils/image'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -53,16 +53,20 @@ export const MenuPage: React.FC = () => {
   const [bulkStockMap, setBulkStockMap] = useState<Record<string, string>>({})
   const [bulkSaving, setBulkSaving] = useState(false)
   const canManageStock = useAuthStore((s) => s.hasRole(['admin', 'manager']))
+  const tenantSlug = useAuthStore((s) => s.user?.tenantSlug ?? '')
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ItemForm>({
     resolver: zodResolver(itemSchema),
     defaultValues: { tax: 8, unit: 'adet', active: true },
   })
 
-  // Ürün görseli — dosya seçilince tarayıcıda küçültülüp base64 olarak forma yazılır
+  // Ürün görseli — dosya seçilince tarayıcıda küçültülüp base64 olarak forma yazılır.
+  // imageTouched: kullanıcı görseli DEĞİŞTİRDİ mi (yeni yükledi/kaldırdı). Değiştirmediyse
+  // PUT'a imageUrl GÖNDERİLMEZ → backend mevcut görseli korur (base64'ü boşuna taşımayız).
   const imageFileRef = useRef<HTMLInputElement>(null)
   const [imageProcessing, setImageProcessing] = useState(false)
-  const imagePreview = watch('imageUrl')
+  const [imageTouched, setImageTouched] = useState(false)
+  const newImage = watch('imageUrl')   // yeni yüklenen base64 (sadece bu oturumda)
 
   const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -72,6 +76,7 @@ export const MenuPage: React.FC = () => {
     try {
       const dataUrl = await fileToResizedDataUrl(file)
       setValue('imageUrl', dataUrl, { shouldDirty: true })
+      setImageTouched(true)
     } catch {
       toast.error('Görsel işlenemedi')
     } finally {
@@ -80,7 +85,11 @@ export const MenuPage: React.FC = () => {
     }
   }
 
-  const removeImage = () => setValue('imageUrl', '', { shouldDirty: true })
+  const removeImage = () => { setValue('imageUrl', '', { shouldDirty: true }); setImageTouched(true) }
+
+  // Önizlemede gösterilecek görsel: yeni yüklendiyse base64, yoksa mevcut görselin URL'i
+  const existingImg = editItem?.hasImage && tenantSlug ? menuImageUrl(tenantSlug, editItem.id, editItem.imgVersion) : null
+  const previewSrc = imageTouched ? (newImage || null) : existingImg
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -96,6 +105,7 @@ export const MenuPage: React.FC = () => {
 
   const openItemModal = (item?: MenuItem) => {
     setEditItem(item)
+    setImageTouched(false)
     if (item) {
       reset({
         name:        item.name,
@@ -110,7 +120,7 @@ export const MenuPage: React.FC = () => {
         stock:       item.stock ?? undefined,
         unit:        item.unit ?? 'adet',
         description: item.description ?? '',
-        imageUrl:    item.imageUrl ?? '',
+        imageUrl:    '',   // mevcut görsel base64 olarak yüklenmez; URL'den önizlenir
         active:      item.active,
       })
     } else {
@@ -120,9 +130,12 @@ export const MenuPage: React.FC = () => {
   }
 
   const onSubmitItem = async (data: ItemForm) => {
+    // Görsel değiştirilmediyse imageUrl gönderme → backend mevcut görseli korur
+    const payload = { ...data }
+    if (editItem && !imageTouched) delete payload.imageUrl
     try {
       if (editItem) {
-        await menuApi.updateItem(editItem.id, data)
+        await menuApi.updateItem(editItem.id, payload)
         toast.success('Ürün güncellendi')
       } else {
         await menuApi.createItem(data)
@@ -359,9 +372,9 @@ export const MenuPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {filtered.map((item) => (
                 <Card key={item.id} hover className="!p-3">
-                  {item.imageUrl && (
+                  {item.hasImage && tenantSlug && (
                     <div className="w-full h-24 -mx-3 -mt-3 mb-2.5 overflow-hidden rounded-t-2xl" style={{ width: 'calc(100% + 1.5rem)' }}>
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                      <img src={menuImageUrl(tenantSlug, item.id, item.imgVersion)} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                     </div>
                   )}
                   <div className="flex items-start justify-between mb-2">
@@ -465,9 +478,9 @@ export const MenuPage: React.FC = () => {
             <label className="block text-sm font-medium text-[var(--color-text-muted)] font-body">Ürün Görseli</label>
             <input type="hidden" {...register('imageUrl')} />
             <input ref={imageFileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImagePick} />
-            {imagePreview ? (
+            {previewSrc ? (
               <div className="relative w-full h-36 rounded-xl overflow-hidden border border-[var(--color-border)] group">
-                <img src={imagePreview} alt="Önizleme" className="w-full h-full object-cover" />
+                <img src={previewSrc} alt="Önizleme" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                   <button type="button" onClick={() => imageFileRef.current?.click()}
                     className="px-3 py-1.5 rounded-lg bg-[var(--color-surface)]/90 text-[var(--color-text)] text-xs font-body flex items-center gap-1">

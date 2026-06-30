@@ -93,7 +93,9 @@ export interface MenuItem {
   unit: string
   tax: number
   active: boolean
-  imageUrl?: string
+  hasImage?: boolean      // görsel var mı (base64 artık listede dönmez)
+  imgVersion?: number     // cache-bust için görsel sürümü
+  imageUrl?: string       // SADECE yazma yolu (yeni base64 yüklerken PUT/POST'a gider)
   tags?: string[]
 }
 

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Search, Plus, Minus, Trash2, MessageSquare, X, ChevronLeft, ShoppingBag, Ban, StickyNote, Check, Printer } from 'lucide-react'
 import { usePrinterStore } from '@/store/printerStore'
 import { buildKitchenBlocks } from '@/utils/receipt'
+import { menuImageUrl } from '@/utils/image'
+import { useAuthStore } from '@/store/authStore'
 import { cn, formatCurrency } from '@/utils/format'
 import { Input } from '@/components/ui/Input'
 import { useOrderStore } from '@/store/orderStore'
@@ -21,6 +23,7 @@ interface OrderPanelProps {
 
 export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
   const { currentOrder, setCurrentOrder, calculateTotals } = useOrderStore()
+  const tenantSlug = useAuthStore((s) => s.user?.tenantSlug ?? '')
   const [view, setView] = useState<PanelView>('order')
   const [categories, setCategories] = useState<Category[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
@@ -400,9 +403,9 @@ export const OrderPanel: React.FC<OrderPanelProps> = ({ table, onClose }) => {
                         'active:scale-95 active:border-[var(--color-accent)]',
                         'disabled:opacity-40 disabled:cursor-not-allowed'
                       )}>
-                      {item.imageUrl && (
+                      {item.hasImage && tenantSlug && (
                         <div className="-mx-4 -mt-4 mb-2 h-20 overflow-hidden rounded-t-2xl">
-                          <img src={item.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                          <img src={menuImageUrl(tenantSlug, item.id, item.imgVersion)} alt="" className="w-full h-full object-cover" loading="lazy" />
                         </div>
                       )}
                       <p className="text-sm font-semibold text-[var(--color-text)] font-body leading-snug mb-1.5 line-clamp-2">{item.name}</p>

@@ -4,6 +4,7 @@ import { Plus, Minus, ShoppingBag, Check, ArrowLeft, Utensils } from 'lucide-rea
 import { publicApi } from '@/api/public'
 import type { PublicMenu } from '@/api/public'
 import { formatCurrency } from '@/utils/format'
+import { menuImageUrl } from '@/utils/image'
 
 interface CartLine { id: string; name: string; price: number; qty: number; note?: string }
 
@@ -148,8 +149,8 @@ export const PublicMenuPage: React.FC = () => {
           const qty = cart[it.id]?.qty ?? 0
           return (
             <div key={it.id} className={`flex items-center gap-3 p-3 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] ${it.soldOut ? 'opacity-50' : ''}`}>
-              {it.imageUrl && (
-                <img src={it.imageUrl} alt={it.name} loading="lazy"
+              {it.hasImage && (
+                <img src={menuImageUrl(slug, it.id, it.imgVersion)} alt={it.name} loading="lazy"
                   className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-[var(--color-border)]" />
               )}
               <div className="flex-1 min-w-0">
