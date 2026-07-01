@@ -23,6 +23,20 @@ export const PublicMenuPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [orderError, setOrderError] = useState<string | null>(null)
+  const [paying, setPaying] = useState(false)
+  const [payResult, setPayResult] = useState<'none' | 'paid' | 'error'>('none')
+
+  // Ödeme dönüşü: iyzico bizi ?paid=1&order=... veya ?payerror=1 ile geri getirir.
+  // ?paid=1'e GÜVENMEYİZ — gerçek durumu backend'den doğrularız.
+  useEffect(() => {
+    if (searchParams.get('payerror')) { setPayResult('error'); return }
+    const orderId = searchParams.get('order')
+    if (searchParams.get('paid') === '1' && orderId) {
+      publicApi.paymentStatus(slug, orderId)
+        .then(({ data }) => setPayResult(data.data.paymentStatus === 'paid' ? 'paid' : 'error'))
+        .catch(() => setPayResult('error'))
+    }
+  }, [slug, searchParams])
 
   useEffect(() => {
     let active = true
@@ -75,6 +89,25 @@ export const PublicMenuPage: React.FC = () => {
     }
   }
 
+  // Online öde: siparişi oluştur → checkout → iyzico hosted ödeme sayfasına yönlendir
+  const payOnline = async () => {
+    const num = parseInt(tableNumber, 10)
+    if (Number.isNaN(num) || num < 1) { setOrderError('Lütfen masa numaranızı girin'); return }
+    if (cartLines.length === 0) return
+    setPaying(true); setOrderError(null)
+    try {
+      const { data } = await publicApi.createOrder(slug, {
+        tableNumber: num,
+        items: cartLines.map(l => ({ menuItemId: l.id, quantity: l.qty, note: l.note })),
+      })
+      const co = await publicApi.checkout(slug, data.data.orderId)
+      window.location.href = co.data.data.paymentPageUrl   // iyzico hosted sayfası
+    } catch (e: any) {
+      setPaying(false)
+      setOrderError(e?.response?.data?.error || 'Ödeme başlatılamadı')
+    }
+  }
+
   // ── Durum ekranları ─────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -107,6 +140,44 @@ export const PublicMenuPage: React.FC = () => {
           <button onClick={() => setSuccess(false)}
             className="px-5 py-2.5 rounded-xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-sm font-bold font-display">
             Yeni Sipariş Ver
+          </button>
+        </div>
+      </div>
+    )
+  }
+  if (payResult === 'paid') {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-6">
+        <div className="text-center max-w-sm">
+          <div className="w-16 h-16 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
+            <Check size={32} className="text-green-400" />
+          </div>
+          <h2 className="text-xl font-bold font-display text-[var(--color-text)] mb-2">Ödeme alındı ✓</h2>
+          <p className="text-sm text-[var(--color-text-muted)] font-body mb-6">
+            Ödemeniz onaylandı, siparişiniz mutfağa iletildi. Afiyet olsun!
+          </p>
+          <button onClick={() => { setPayResult('none'); window.location.href = `${import.meta.env.BASE_URL}m/${slug}${masaParam ? `?masa=${masaParam}` : ''}` }}
+            className="px-5 py-2.5 rounded-xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-sm font-bold font-display">
+            Menüye Dön
+          </button>
+        </div>
+      </div>
+    )
+  }
+  if (payResult === 'error') {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-6">
+        <div className="text-center max-w-sm">
+          <div className="w-16 h-16 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center mx-auto mb-4">
+            <span className="text-red-400 text-2xl">!</span>
+          </div>
+          <h2 className="text-xl font-bold font-display text-[var(--color-text)] mb-2">Ödeme tamamlanamadı</h2>
+          <p className="text-sm text-[var(--color-text-muted)] font-body mb-6">
+            Ödemeniz alınamadı veya iptal edildi. Tekrar deneyebilir ya da masada ödeyebilirsiniz.
+          </p>
+          <button onClick={() => { setPayResult('none'); window.location.href = `${import.meta.env.BASE_URL}m/${slug}${masaParam ? `?masa=${masaParam}` : ''}` }}
+            className="px-5 py-2.5 rounded-xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-sm font-bold font-display">
+            Menüye Dön
           </button>
         </div>
       </div>
@@ -223,12 +294,20 @@ export const PublicMenuPage: React.FC = () => {
               <p className="text-xs text-red-400 font-body text-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-3">{orderError}</p>
             )}
 
-            <button onClick={submitOrder} disabled={submitting}
+            {menu.paymentEnabled && (
+              <button onClick={payOnline} disabled={paying || submitting}
+                className="w-full py-3.5 rounded-2xl bg-green-500 text-white text-sm font-bold font-display disabled:opacity-50 mb-2 flex items-center justify-center gap-2">
+                {paying ? 'Ödeme sayfası açılıyor…' : `💳 Online Öde · ${formatCurrency(cartTotal)}`}
+              </button>
+            )}
+            <button onClick={submitOrder} disabled={submitting || paying}
               className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] text-[var(--color-accent-text)] text-sm font-bold font-display disabled:opacity-50">
-              {submitting ? 'Gönderiliyor…' : `Sipariş Ver · ${formatCurrency(cartTotal)}`}
+              {submitting ? 'Gönderiliyor…' : menu.paymentEnabled ? `Masada Öde · Sipariş Ver` : `Sipariş Ver · ${formatCurrency(cartTotal)}`}
             </button>
             <p className="text-[11px] text-[var(--color-text-muted)] font-body text-center mt-2">
-              Siparişiniz garson onayından sonra hazırlanır. Ödeme masada alınır.
+              {menu.paymentEnabled
+                ? 'Online öde: kartla hemen. Masada öde: garson onayından sonra, ödeme masada.'
+                : 'Siparişiniz garson onayından sonra hazırlanır. Ödeme masada alınır.'}
             </p>
           </div>
         </div>

@@ -23,6 +23,7 @@ export interface PublicMenuItem {
 
 export interface PublicMenu {
   restaurant: string
+  paymentEnabled?: boolean
   categories: { id: string; name: string; icon: string; color: string }[]
   items: PublicMenuItem[]
 }
@@ -42,4 +43,12 @@ export const publicApi = {
 
   createOrder: (slug: string, body: { tableNumber: number; items: PublicOrderLine[] }) =>
     publicClient.post<{ success: boolean; data: { orderId: string }; message?: string }>(`/${slug}/orders`, body),
+
+  // Online ödeme başlat → iyzico hosted ödeme sayfası URL'i döner
+  checkout: (slug: string, orderId: string) =>
+    publicClient.post<{ success: boolean; data: { paymentPageUrl: string }; error?: string }>(`/${slug}/orders/${orderId}/checkout`, {}),
+
+  // Ödeme dönüşünde GERÇEK durumu backend'den doğrula (query'deki ?paid=1'e güvenme)
+  paymentStatus: (slug: string, orderId: string) =>
+    publicClient.get<{ success: boolean; data: { paymentStatus: string; total: number } }>(`/${slug}/orders/${orderId}/payment-status`),
 }
