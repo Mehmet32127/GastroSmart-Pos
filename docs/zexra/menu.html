@@ -15,8 +15,9 @@
     body { background:#f4f1ea; margin:0; }
     .zx-loading, .zx-error { text-align:center; padding:60px 20px; font:600 15px 'Urbanist',sans-serif; color:#294620; }
     .menuAreaItem { position:relative; }
+    .menuAreaItem .photoArea { position:relative; }
     .menuAreaItem .photoArea a img { object-fit:cover; }
-    .zx-noimg { background:#efe9dc; display:flex; align-items:center; justify-content:center; color:#bd9f57; font-size:34px; height:180px; }
+    .zx-noimg { width:100%; background:#efe9dc; display:flex; align-items:center; justify-content:center; color:#c9b787; font-size:40px; height:150px; }
     /* Masonry (JS'siz CSS multi-column): telefon 2, tablet+ 3 sütun */
     .grid { display:block !important; column-count:2; column-gap:4px; }
     .grid-sizer { display:none !important; }
@@ -137,7 +138,7 @@
         : '<div class="zx-noimg"><i class="fa fa-cutlery"></i></div>';
       var ctrl = it.soldOut ? '' : cartCtrl(it.id);
       return '<div class="grid-item" style="padding:10px;"><div class="menuAreaItem" data-id="'+it.id+'">'+
-        '<div class="photoArea">'+(it.soldOut?'<div class="price">TÜKENDİ</div>':'')+photo+'</div>'+ ctrl +
+        '<div class="photoArea">'+(it.soldOut?'<div class="price">TÜKENDİ</div>':'')+photo+ctrl+'</div>'+
         '<div class="titleArea">'+esc(it.name)+'<span>'+tl(it.price)+'</span></div>'+
         (it.description ? '<div class="DescriptionArea">'+esc(it.description)+'</div>' : '')+
       '</div></div>';
@@ -150,8 +151,9 @@
     function refreshCard(id){
       var el = content.querySelector('.menuAreaItem[data-id="'+id+'"]');
       if (!el) return;
-      var old = el.querySelector('.zx-qty, .zx-add'); if (old) old.remove();
-      el.querySelector('.photoArea').insertAdjacentHTML('afterend', cartCtrl(id));
+      var pa = el.querySelector('.photoArea');
+      var old = pa.querySelector('.zx-qty, .zx-add'); if (old) old.remove();
+      pa.insertAdjacentHTML('beforeend', cartCtrl(id));   // butonu FOTOĞRAFIN içine koy
     }
 
     // ── Etkileşim ──────────────────────────────────────────────────────────────
