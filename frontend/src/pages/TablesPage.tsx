@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Search, RefreshCw, LayoutGrid, List, Plus, Edit2, Trash2,
-  Settings, ChevronDown, Tag, QrCode, Printer, Users, DollarSign, Percent,
+  Settings, ChevronDown, Tag, Users, DollarSign, Percent,
 } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
 
 // Üst özet kartı
 const StatBox: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; color: string }> = ({ icon, label, value, color }) => (
@@ -72,30 +71,7 @@ export const TablesPage: React.FC = () => {
   const [orderPanelOpen, setOrderPanelOpen] = useState(false)
   const [gearOpen, setGearOpen] = useState(false)
   const [statusTable, setStatusTable] = useState<Table | null>(null)  // durum değiştirme menüsü
-  const [qrTable, setQrTable] = useState<Table | null>(null)          // QR menü modalı
-  const qrUrl = qrTable && user?.tenantSlug
-    ? `${window.location.origin}${import.meta.env.BASE_URL}zexra/menu.html?slug=${user.tenantSlug}&masa=${qrTable.number}${qrTable.qrToken ? `&t=${qrTable.qrToken}` : ''}`
-    : ''
-  const [qrRotating, setQrRotating] = useState(false)
-  const updateTableLocal = useTableStore((s) => s.updateTable)
-
-  // QR token yenile — eski (fotoğraflanmış/sızmış) QR'lar geçersiz olur
-  const handleRotateQr = async () => {
-    if (!qrTable) return
-    setQrRotating(true)
-    try {
-      const { data } = await tablesApi.rotateQr(qrTable.id)
-      if (data.data) {
-        updateTableLocal(data.data)
-        setQrTable(data.data)   // modaldaki QR yeni token'la yeniden çizilsin
-      }
-      toast.success('QR yenilendi — eski QR artık geçersiz')
-    } catch {
-      toast.error('QR yenilenemedi')
-    } finally {
-      setQrRotating(false)
-    }
-  }
+  // QR kodları artık ayrı "QR Menü" sekmesinde (per-restoran, önizleme + toplu yazdır + yenileme)
 
   // Masa yönetimi
   const [mgmtMode, setMgmtMode] = useState(false)
@@ -494,14 +470,8 @@ export const TablesPage: React.FC = () => {
                     isSelected={selectedTable?.id === table.id} cardSize={cardSize}
                     onStatusChange={mgmtMode ? undefined : setStatusTable} />
                   {mgmtMode && canManage && (
-                    <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {user?.tenantSlug && (
-                        <button onClick={() => setQrTable(table)}
-                          title="QR Menü kodunu göster / yazdır"
-                          className="p-1.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors shadow-sm">
-                          <QrCode size={11} />
-                        </button>
-                      )}
+                    <div className="absolute top-1 right-1 flex gap-1">
+                      {/* QR kod artık "QR Menü" sekmesinde (per-restoran, tek yerde) */}
                       <button onClick={() => openTableModal(table)}
                         className="p-1.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors shadow-sm">
                         <Edit2 size={11} />
@@ -732,32 +702,6 @@ export const TablesPage: React.FC = () => {
         )}
       </Modal>
 
-      {/* ── Masa QR Menü ──────────────────────────────────────────────────────── */}
-      <Modal isOpen={!!qrTable} onClose={() => setQrTable(null)}
-        title={`${qrTable?.name ?? 'Masa'} · QR Menü`} size="sm"
-        footer={<Button variant="secondary" onClick={() => setQrTable(null)}>Kapat</Button>}>
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-xs text-[var(--color-text-muted)] font-body text-center">
-            Müşteri bu kodu telefonuyla okutup menüden sipariş verebilir.
-          </p>
-          <div className="bg-white p-4 rounded-xl">
-            {qrUrl && <QRCodeSVG value={qrUrl} size={200} />}
-          </div>
-          <p className="text-[10px] text-[var(--color-text-muted)] font-mono break-all text-center max-w-[240px]">{qrUrl}</p>
-          {!qrTable?.qrToken && (
-            <p className="text-[11px] text-amber-400 font-body text-center max-w-[260px]">
-              Bu masada QR koruması henüz yok. "QR Yenile" ile güvenlik kodu ekleyin — eski QR'lar geçersiz olur.
-            </p>
-          )}
-          <div className="flex gap-2">
-            <Button variant="secondary" icon={<RefreshCw size={14} className={cn(qrRotating && 'animate-spin')} />}
-              onClick={handleRotateQr} disabled={qrRotating}>
-              QR Yenile
-            </Button>
-            <Button icon={<Printer size={14} />} onClick={() => window.print()}>Yazdır</Button>
-          </div>
-        </div>
-      </Modal>
     </>
   )
 }

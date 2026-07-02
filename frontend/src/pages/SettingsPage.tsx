@@ -415,8 +415,7 @@ export const SettingsPage: React.FC = () => {
       {/* Adisyon yazıcısı (Bluetooth) */}
       <PrinterCard />
 
-      {/* Masa QR güvenliği — otomatik/manuel token yenileme */}
-      <QrSecurityCard />
+      {/* QR güvenliği + kodları artık "QR Menü" sekmesinde (tek yerde) */}
 
       {/* Restaurant Info */}
       <Card>
