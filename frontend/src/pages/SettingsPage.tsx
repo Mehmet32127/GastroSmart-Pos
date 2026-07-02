@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Save, Building2, Phone, FileText, Globe, Receipt, Download, UserCircle, Camera, Trash2, Sun, Moon, Monitor, Volume2, VolumeX, Keyboard, Lock } from 'lucide-react'
+import { Save, Building2, Phone, FileText, Globe, Receipt, Download, UserCircle, Camera, Trash2, Sun, Moon, Monitor, Volume2, VolumeX, Keyboard, Lock, QrCode, RefreshCw } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/Modal'
+import { tablesApi } from '@/api/tables'
 import { Card } from '@/components/ui/common'
 import { Button } from '@/components/ui/Button'
 import { settingsApi } from '@/api/settings'
@@ -26,6 +28,106 @@ interface SettingsData {
 
 const CURRENCIES = ['TRY', 'USD', 'EUR', 'GBP']
 const TIMEZONES  = ['Europe/Istanbul', 'Europe/London', 'Europe/Berlin', 'America/New_York']
+
+// ── QR Güvenliği kartı ────────────────────────────────────────────────────────
+// Masa QR token'ları: otomatik (günlük/haftalık, gece 04:15) veya manuel yenilenir.
+// Yenilenince eski/fotoğraflanmış QR'larla sipariş verilemez. Ayar anında kaydedilir
+// (sayfanın "Tüm Değişiklikleri Kaydet" akışından bağımsız).
+type QrRotateMode = 'off' | 'daily' | 'weekly'
+const QR_MODES: { value: QrRotateMode; label: string; desc: string }[] = [
+  { value: 'off',    label: 'Kapalı',   desc: 'Sadece manuel yenileme' },
+  { value: 'daily',  label: 'Günlük',   desc: 'Her gece 04:15 otomatik' },
+  { value: 'weekly', label: 'Haftalık', desc: '7 günde bir otomatik' },
+]
+
+function QrSecurityCard() {
+  const [mode, setMode] = useState<QrRotateMode>('off')
+  const [lastRotated, setLastRotated] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [confirmAll, setConfirmAll] = useState(false)
+
+  useEffect(() => {
+    settingsApi.get()
+      .then(({ data: res }) => {
+        if (res.data?.qrAutoRotate) setMode(res.data.qrAutoRotate)
+        if (res.data?.qrLastRotated) setLastRotated(res.data.qrLastRotated)
+      })
+      .catch(() => {})
+  }, [])
+
+  const changeMode = async (m: QrRotateMode) => {
+    const prev = mode
+    setMode(m)
+    try {
+      await settingsApi.update({ qrAutoRotate: m })
+      toast.success(m === 'off' ? 'Otomatik QR yenileme kapatıldı' : `QR'lar ${m === 'daily' ? 'her gece' : 'haftada bir'} otomatik yenilenecek`)
+    } catch {
+      setMode(prev)
+      toast.error('Ayar kaydedilemedi')
+    }
+  }
+
+  const rotateAll = async () => {
+    setConfirmAll(false)
+    setBusy(true)
+    try {
+      const { data } = await tablesApi.rotateAllQr()
+      setLastRotated(new Date().toISOString())
+      toast.success(`${data.data?.count ?? 0} masanın QR kodu yenilendi — eski QR'lar geçersiz`)
+    } catch {
+      toast.error('QR kodları yenilenemedi')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="text-sm font-semibold font-display text-[var(--color-text)] flex items-center gap-2 mb-1">
+        <QrCode size={16} className="text-[var(--color-accent)]" /> QR Güvenliği
+      </h2>
+      <p className="text-xs text-[var(--color-text-muted)] font-body mb-4">
+        Masa QR kodları güvenlik kodu taşır; yenilenince eski (fotoğraflanmış) QR'larla sipariş verilemez.
+        Not: Yenileme sonrası <b>basılı QR etiketleri de yeniden basılmalıdır.</b>
+      </p>
+
+      <label className="block text-xs font-medium text-[var(--color-text-muted)] font-body mb-1.5">Otomatik Yenileme</label>
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {QR_MODES.map((m) => (
+          <button key={m.value} onClick={() => changeMode(m.value)}
+            className={`p-2.5 rounded-xl border text-left transition-all ${
+              mode === m.value
+                ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40 text-[var(--color-accent)]'
+                : 'bg-[var(--color-surface2)] border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+            }`}>
+            <span className="block text-sm font-semibold font-body">{m.label}</span>
+            <span className="block text-[10px] font-body opacity-80">{m.desc}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <Button variant="secondary" size="sm" icon={<RefreshCw size={14} />} onClick={() => setConfirmAll(true)} disabled={busy}>
+          Tüm QR'ları Şimdi Yenile
+        </Button>
+        {lastRotated && (
+          <span className="text-[11px] text-[var(--color-text-muted)] font-body">
+            Son yenileme: {new Date(lastRotated).toLocaleString('tr-TR')}
+          </span>
+        )}
+      </div>
+
+      <ConfirmDialog
+        isOpen={confirmAll}
+        onConfirm={rotateAll}
+        onCancel={() => setConfirmAll(false)}
+        title="Tüm QR Kodlarını Yenile"
+        message="Tüm masaların QR güvenlik kodu değişecek. Basılı/eski QR kodlarla artık sipariş verilemez; masalardaki QR etiketlerini yeniden basmanız gerekir. Devam edilsin mi?"
+        confirmText="Yenile" danger
+      />
+    </Card>
+  )
+}
 
 // Kilit ekranı PIN'i belirleme/değiştirme/kaldırma kartı
 function PinSettingsCard() {
@@ -312,6 +414,9 @@ export const SettingsPage: React.FC = () => {
 
       {/* Adisyon yazıcısı (Bluetooth) */}
       <PrinterCard />
+
+      {/* Masa QR güvenliği — otomatik/manuel token yenileme */}
+      <QrSecurityCard />
 
       {/* Restaurant Info */}
       <Card>

@@ -74,8 +74,28 @@ export const TablesPage: React.FC = () => {
   const [statusTable, setStatusTable] = useState<Table | null>(null)  // durum değiştirme menüsü
   const [qrTable, setQrTable] = useState<Table | null>(null)          // QR menü modalı
   const qrUrl = qrTable && user?.tenantSlug
-    ? `${window.location.origin}${import.meta.env.BASE_URL}m/${user.tenantSlug}?masa=${qrTable.number}`
+    ? `${window.location.origin}${import.meta.env.BASE_URL}zexra/menu.html?slug=${user.tenantSlug}&masa=${qrTable.number}${qrTable.qrToken ? `&t=${qrTable.qrToken}` : ''}`
     : ''
+  const [qrRotating, setQrRotating] = useState(false)
+  const updateTableLocal = useTableStore((s) => s.updateTable)
+
+  // QR token yenile — eski (fotoğraflanmış/sızmış) QR'lar geçersiz olur
+  const handleRotateQr = async () => {
+    if (!qrTable) return
+    setQrRotating(true)
+    try {
+      const { data } = await tablesApi.rotateQr(qrTable.id)
+      if (data.data) {
+        updateTableLocal(data.data)
+        setQrTable(data.data)   // modaldaki QR yeni token'la yeniden çizilsin
+      }
+      toast.success('QR yenilendi — eski QR artık geçersiz')
+    } catch {
+      toast.error('QR yenilenemedi')
+    } finally {
+      setQrRotating(false)
+    }
+  }
 
   // Masa yönetimi
   const [mgmtMode, setMgmtMode] = useState(false)
@@ -724,7 +744,18 @@ export const TablesPage: React.FC = () => {
             {qrUrl && <QRCodeSVG value={qrUrl} size={200} />}
           </div>
           <p className="text-[10px] text-[var(--color-text-muted)] font-mono break-all text-center max-w-[240px]">{qrUrl}</p>
-          <Button icon={<Printer size={14} />} onClick={() => window.print()}>Yazdır</Button>
+          {!qrTable?.qrToken && (
+            <p className="text-[11px] text-amber-400 font-body text-center max-w-[260px]">
+              Bu masada QR koruması henüz yok. "QR Yenile" ile güvenlik kodu ekleyin — eski QR'lar geçersiz olur.
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button variant="secondary" icon={<RefreshCw size={14} className={cn(qrRotating && 'animate-spin')} />}
+              onClick={handleRotateQr} disabled={qrRotating}>
+              QR Yenile
+            </Button>
+            <Button icon={<Printer size={14} />} onClick={() => window.print()}>Yazdır</Button>
+          </div>
         </div>
       </Modal>
     </>

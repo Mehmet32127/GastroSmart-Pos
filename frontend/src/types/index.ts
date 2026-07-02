@@ -60,6 +60,7 @@ export interface Table {
   status: TableStatus
   section?: string
   note?: string
+  qrToken?: string | null   // QR güvenlik token'ı — yenilenince eski QR geçersiz
   posX?: number
   posY?: number
   currentOrderId?: string

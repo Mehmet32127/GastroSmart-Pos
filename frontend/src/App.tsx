@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 
 // Layout
@@ -21,7 +21,21 @@ import { MenuPage }         from '@/pages/MenuPage'
 import { UsersPage }        from '@/pages/UsersPage'
 import { ThemePage }        from '@/pages/ThemePage'
 import { SettingsPage }     from '@/pages/SettingsPage'
-import { PublicMenuPage }   from '@/pages/PublicMenuPage'
+// Public QR menü artık birebir Zexra tasarımı (statik: /zexra/menu.html).
+// Eski /m/:slug bağlantıları oraya yönlendirilir.
+const ZexraRedirect: React.FC = () => {
+  const { slug = '' } = useParams<{ slug: string }>()
+  const [sp] = useSearchParams()
+  useEffect(() => {
+    const masa = sp.get('masa')
+    const t = sp.get('t')
+    const url = `${import.meta.env.BASE_URL}zexra/menu.html?slug=${encodeURIComponent(slug)}`
+      + (masa ? `&masa=${encodeURIComponent(masa)}` : '')
+      + (t ? `&t=${encodeURIComponent(t)}` : '')
+    window.location.replace(url)
+  }, [slug, sp])
+  return null
+}
 
 // Stores / hooks
 import { useAuthStore }   from '@/store/authStore'
@@ -117,7 +131,7 @@ export const App: React.FC = () => {
 
       <Routes>
         {/* Public QR menü — müşteri, login gerektirmez */}
-        <Route path="/m/:slug" element={<PublicMenuPage />} />
+        <Route path="/m/:slug" element={<ZexraRedirect />} />
 
         {/* Public — legacy (slug'sız) */}
         <Route path="/login" element={<LoginPage />} />

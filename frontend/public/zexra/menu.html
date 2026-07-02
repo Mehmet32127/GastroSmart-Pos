@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Menü</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" />
+  <link href="./bootstrap.min.css" rel="stylesheet" />
+  <link href="./app.css" rel="stylesheet" />
+  <style>
+    /* Dinamik + sipariş katmanı — Zexra app.css'e dokunmadan ek */
+    body { background:#f4f1ea; margin:0; }
+    .zx-loading, .zx-error { text-align:center; padding:60px 20px; font:600 15px 'Urbanist',sans-serif; color:#294620; }
+    .menuAreaItem { position:relative; }
+    .menuAreaItem .photoArea a img { object-fit:cover; }
+    .zx-noimg { background:#efe9dc; display:flex; align-items:center; justify-content:center; color:#bd9f57; font-size:34px; height:180px; }
+    /* Masonry (JS'siz CSS multi-column): telefon 2, tablet+ 3 sütun */
+    .grid { display:block !important; column-count:2; column-gap:4px; }
+    .grid-sizer { display:none !important; }
+    .grid-item { width:100% !important; break-inside:avoid; -webkit-column-break-inside:avoid; display:inline-block; }
+    @media (min-width:768px){ .grid { column-count:3; } }
+    body.zx-has-cart .menuContent { padding-bottom:90px; }
+    /* Sepete ekle butonu (kartın sağ altında) */
+    .zx-add { position:absolute; right:12px; bottom:8px; z-index:3; width:38px; height:38px; border:none; border-radius:50%;
+      background:#294620; color:#fff; font-size:20px; line-height:1; box-shadow:0 3px 8px rgba(0,0,0,.25); cursor:pointer; font-family:'Urbanist',sans-serif; }
+    .zx-add:active { transform:scale(.9); }
+    .zx-qty { position:absolute; right:8px; bottom:8px; z-index:3; display:flex; align-items:center; gap:8px; background:#294620; border-radius:20px; padding:4px 6px; box-shadow:0 3px 8px rgba(0,0,0,.25); }
+    .zx-qty button { width:28px; height:28px; border:none; border-radius:50%; background:#3c5c2e; color:#fff; font-size:16px; cursor:pointer; }
+    .zx-qty span { color:#fff; font:700 14px 'Urbanist',sans-serif; min-width:16px; text-align:center; }
+    /* Sepet alt bar */
+    .zx-cartbar { position:fixed; left:50%; transform:translateX(-50%); bottom:14px; width:calc(100% - 28px); max-width:460px; z-index:50;
+      display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-radius:16px; background:#294620; color:#fff;
+      box-shadow:0 8px 24px rgba(0,0,0,.3); font-family:'Urbanist',sans-serif; cursor:pointer; }
+    .zx-cartbar b { font-weight:800; }
+    /* Sepet paneli + overlay */
+    .zx-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:60; display:none; align-items:flex-end; }
+    .zx-panel { width:100%; max-width:460px; margin:0 auto; background:#fff; border-radius:22px 22px 0 0; padding:20px; max-height:85vh; overflow-y:auto; font-family:'Urbanist',sans-serif; }
+    .zx-panel h3 { color:#294620; margin:0 0 14px; }
+    .zx-line { display:flex; align-items:center; gap:8px; padding:6px 0; }
+    .zx-line .n { flex:1; color:#294620; font-weight:600; }
+    .zx-line .p { color:#7c7c7c; font-variant-numeric:tabular-nums; }
+    .zx-line button { width:26px; height:26px; border:none; border-radius:50%; background:#eee; color:#294620; cursor:pointer; }
+    .zx-total { display:flex; justify-content:space-between; border-top:1px solid #eee; padding-top:12px; margin-top:8px; font-weight:800; color:#294620; }
+    .zx-input { width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:12px; font:600 15px 'Urbanist',sans-serif; margin:12px 0 4px; box-sizing:border-box; }
+    .zx-btn { width:100%; padding:14px; border:none; border-radius:14px; font:800 15px 'Urbanist',sans-serif; cursor:pointer; margin-top:10px; }
+    .zx-btn-pay { background:#16a34a; color:#fff; }
+    .zx-btn-order { background:#bd9f57; color:#fff; }
+    .zx-err { color:#c0392b; text-align:center; font-size:13px; margin-top:8px; }
+    .zx-result { position:fixed; inset:0; background:#f4f1ea; z-index:100; display:flex; align-items:center; justify-content:center; padding:24px; font-family:'Urbanist',sans-serif; }
+    .zx-result .box { text-align:center; max-width:360px; }
+    .zx-result .ic { width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:34px; }
+  </style>
+</head>
+<body>
+  <div class="header animated fadeInDown">
+    <div class="container">
+      <div><a href="javascript:void(0)" class="openMenuBtn"><i class="fa fa-bars"></i> <span id="zxBrand">Menü</span></a></div>
+      <div id="zxTable" style="font:700 14px 'Urbanist',sans-serif;color:#294620;"></div>
+      <div><i class="fa fa-cutlery" style="color:#bd9f57;"></i></div>
+    </div>
+  </div>
+
+  <div class="menu_category" id="menuCategories" style="display:none;">
+    <div class="container" id="zxCatNav"></div>
+  </div>
+
+  <div class="menuContent" id="zxContent">
+    <div class="zx-loading">Menü yükleniyor…</div>
+  </div>
+
+  <script>
+  (function () {
+    var qs = new URLSearchParams(location.search);
+    var slug = qs.get('slug') || '';
+    var masa = qs.get('masa') || '';
+    var qrt  = qs.get('t') || '';   // QR güvenlik token'ı (sipariş doğrulaması)
+    var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:3001'
+      : 'https://gastrosmart-pos-backend.onrender.com';
+
+    var content = document.getElementById('zxContent');
+    var catNav  = document.getElementById('zxCatNav');
+    var paymentEnabled = false;
+    var itemsById = {};
+    var cart = {}; // id -> qty
+
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function tl(n){ return new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(n||0); }
+    function catId(id){ return 'category_' + id; }
+    function imgUrl(it){ return API + '/api/public/' + encodeURIComponent(slug) + '/items/' + it.id + '/image?v=' + (it.imgVersion||0); }
+
+    if (!slug) { content.innerHTML = '<div class="zx-error">Restoran kodu eksik.</div>'; return; }
+    if (masa) document.getElementById('zxTable').textContent = 'Masa ' + masa;
+
+    // Ödeme dönüşü (?paid / ?payerror) — ?paid=1'e GÜVENME, backend'den doğrula
+    handleReturn();
+
+    fetch(API + '/api/public/' + encodeURIComponent(slug) + '/menu')
+      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(res){
+        var d = res.data || {};
+        paymentEnabled = !!d.paymentEnabled;
+        document.getElementById('zxBrand').textContent = d.restaurant || 'Menü';
+        document.title = d.restaurant || 'Menü';
+        (d.items||[]).forEach(function(i){ itemsById[i.id] = i; });
+        renderMenu(d);
+        buildCartUI();
+      })
+      .catch(function(){ content.innerHTML = '<div class="zx-error">Menü yüklenemedi. QR veya restoran kodu hatalı olabilir.</div>'; });
+
+    // ── Menü render (birebir Zexra) ────────────────────────────────────────────
+    function renderMenu(d){
+      var cats = d.categories || [], items = d.items || [];
+      if (!cats.length) { content.innerHTML = '<div class="zx-error">Menü boş.</div>'; return; }
+      catNav.innerHTML = cats.map(function(c){ return '<a href="#'+catId(c.id)+'">'+(c.icon?esc(c.icon)+' ':'')+esc(c.name)+'</a>'; }).join('');
+      document.getElementById('menuCategories').style.display = '';
+      var html = '';
+      cats.forEach(function(c){
+        var list = items.filter(function(i){ return i.categoryId === c.id; });
+        if (!list.length) return;
+        html += '<div class="container '+catId(c.id)+'" id="'+catId(c.id)+'"><div class="row g-2">'+
+          '<div class="col-12 menuTitleArea"><b>'+(c.icon?esc(c.icon)+' ':'')+esc(c.name)+'</b></div>'+
+          '<div class="grid"><div class="grid-sizer"></div>'+ list.map(itemCard).join('') +'</div></div></div>';
+      });
+      content.innerHTML = html;
+      wireCards();
+    }
+
+    window.zxImgFail = function(img){ var a = img.closest('.menuItemTrigger'); if (a) a.outerHTML = '<div class="zx-noimg"><i class="fa fa-cutlery"></i></div>'; };
+
+    function itemCard(it){
+      var photo = it.hasImage
+        ? '<a href="javascript:void(0)" class="menuItemTrigger" data-big="'+imgUrl(it)+'" data-name="'+esc(it.name)+'" data-desc="'+esc(it.description||'')+'" data-price="'+esc(tl(it.price))+'"><img src="'+imgUrl(it)+'" alt="'+esc(it.name)+'" loading="lazy" onerror="zxImgFail(this)" /></a>'
+        : '<div class="zx-noimg"><i class="fa fa-cutlery"></i></div>';
+      var ctrl = it.soldOut ? '' : cartCtrl(it.id);
+      return '<div class="grid-item" style="padding:10px;"><div class="menuAreaItem" data-id="'+it.id+'">'+
+        '<div class="photoArea">'+(it.soldOut?'<div class="price">TÜKENDİ</div>':'')+photo+'</div>'+ ctrl +
+        '<div class="titleArea">'+esc(it.name)+'<span>'+tl(it.price)+'</span></div>'+
+        (it.description ? '<div class="DescriptionArea">'+esc(it.description)+'</div>' : '')+
+      '</div></div>';
+    }
+    function cartCtrl(id){
+      var q = cart[id] || 0;
+      if (q > 0) return '<div class="zx-qty"><button data-dec="'+id+'">−</button><span>'+q+'</span><button data-inc="'+id+'">+</button></div>';
+      return '<button class="zx-add" data-inc="'+id+'">+</button>';
+    }
+    function refreshCard(id){
+      var el = content.querySelector('.menuAreaItem[data-id="'+id+'"]');
+      if (!el) return;
+      var old = el.querySelector('.zx-qty, .zx-add'); if (old) old.remove();
+      el.querySelector('.photoArea').insertAdjacentHTML('afterend', cartCtrl(id));
+    }
+
+    // ── Etkileşim ──────────────────────────────────────────────────────────────
+    function wireCards(){
+      content.addEventListener('click', function(e){
+        var inc = e.target.closest('[data-inc]'), dec = e.target.closest('[data-dec]'), trig = e.target.closest('.menuItemTrigger');
+        if (inc) { addCart(inc.getAttribute('data-inc'), 1); }
+        else if (dec) { addCart(dec.getAttribute('data-dec'), -1); }
+        else if (trig) { openModal(trig.getAttribute('data-big'), trig.getAttribute('data-name'), trig.getAttribute('data-desc'), trig.getAttribute('data-price')); }
+      });
+    }
+    function addCart(id, delta){
+      cart[id] = Math.max(0, (cart[id]||0) + delta);
+      if (cart[id] === 0) delete cart[id];
+      refreshCard(id); renderCartBar();
+    }
+    function cartLines(){ return Object.keys(cart).map(function(id){ var it=itemsById[id]; return { id:id, name:it.name, price:it.price, qty:cart[id] }; }); }
+    function cartCount(){ return cartLines().reduce(function(s,l){ return s+l.qty; },0); }
+    function cartTotal(){ return cartLines().reduce(function(s,l){ return s+l.price*l.qty; },0); }
+
+    // ── Sepet UI ───────────────────────────────────────────────────────────────
+    var bar, overlay;
+    function buildCartUI(){
+      bar = document.createElement('div'); bar.className='zx-cartbar'; bar.style.display='none';
+      bar.innerHTML = '<span><i class="fa fa-shopping-basket"></i> <b class="zx-cnt">0</b> ürün</span><b class="zx-tot">₺0,00</b>';
+      bar.addEventListener('click', openCart);
+      document.body.appendChild(bar);
+
+      overlay = document.createElement('div'); overlay.className='zx-overlay';
+      overlay.addEventListener('click', function(e){ if (e.target===overlay) overlay.style.display='none'; });
+      document.body.appendChild(overlay);
+      renderCartBar();
+    }
+    function renderCartBar(){
+      if (!bar) return;
+      var c = cartCount();
+      document.body.classList.toggle('zx-has-cart', c>0);
+      bar.style.display = c>0 ? 'flex' : 'none';
+      bar.querySelector('.zx-cnt').textContent = c;
+      bar.querySelector('.zx-tot').textContent = tl(cartTotal());
+      if (overlay.style.display==='flex') renderCartPanel();
+    }
+    function openCart(){ overlay.style.display='flex'; renderCartPanel(); }
+    function renderCartPanel(){
+      var lines = cartLines();
+      var payBtn = paymentEnabled ? '<button class="zx-btn zx-btn-pay" id="zxPay">💳 Online Öde · '+tl(cartTotal())+'</button>' : '';
+      overlay.innerHTML = '<div class="zx-panel" onclick="event.stopPropagation()">'+
+        '<h3>Siparişiniz</h3>'+
+        lines.map(function(l){ return '<div class="zx-line"><span class="n">'+esc(l.name)+'</span><span class="p">'+tl(l.price*l.qty)+'</span><button data-dec="'+l.id+'">−</button><span style="min-width:16px;text-align:center;color:#294620;font-weight:700">'+l.qty+'</span><button data-inc="'+l.id+'">+</button></div>'; }).join('')+
+        '<div class="zx-total"><span>Toplam</span><span>'+tl(cartTotal())+'</span></div>'+
+        '<input class="zx-input" id="zxMasa" inputmode="numeric" placeholder="Masa Numarası" value="'+esc(masa)+'" '+(masa?'disabled':'')+' />'+
+        '<div class="zx-err" id="zxErr" style="display:none"></div>'+
+        payBtn +
+        '<button class="zx-btn zx-btn-order" id="zxOrder">'+(paymentEnabled?'Masada Öde · Sipariş Ver':'Sipariş Ver · '+tl(cartTotal()))+'</button>'+
+      '</div>';
+      overlay.querySelector('.zx-panel').addEventListener('click', function(e){
+        var inc=e.target.closest('[data-inc]'), dec=e.target.closest('[data-dec]');
+        if (inc){ addCart(inc.getAttribute('data-inc'),1); } else if (dec){ addCart(dec.getAttribute('data-dec'),-1); }
+      });
+      var o=document.getElementById('zxOrder'); if(o) o.addEventListener('click', function(){ submit(false); });
+      var p=document.getElementById('zxPay'); if(p) p.addEventListener('click', function(){ submit(true); });
+    }
+    function showErr(m){ var e=document.getElementById('zxErr'); if(e){ e.textContent=m; e.style.display='block'; } }
+    function getMasa(){ var v=(document.getElementById('zxMasa')||{}).value || masa; var n=parseInt(v,10); return (isNaN(n)||n<1)?null:n; }
+
+    // ── Sipariş + Ödeme ────────────────────────────────────────────────────────
+    var busy=false;
+    function submit(online){
+      if (busy) return;
+      var num=getMasa(); if(!num){ showErr('Lütfen masa numaranızı girin'); return; }
+      if(!cartLines().length) return;
+      busy=true;
+      var btn=document.getElementById(online?'zxPay':'zxOrder'); if(btn){ btn.disabled=true; btn.textContent=online?'Ödeme açılıyor…':'Gönderiliyor…'; }
+      fetch(API+'/api/public/'+encodeURIComponent(slug)+'/orders',{ method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ tableNumber:num, qrToken: qrt || undefined, items:cartLines().map(function(l){ return { menuItemId:l.id, quantity:l.qty }; }) }) })
+        .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw j; return j; }); })
+        .then(function(j){
+          var orderId=j.data.orderId;
+          if (online){
+            return fetch(API+'/api/public/'+encodeURIComponent(slug)+'/orders/'+orderId+'/checkout',{ method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
+              .then(function(r){ return r.json().then(function(j2){ if(!r.ok) throw j2; return j2; }); })
+              .then(function(j2){ location.href = j2.data.paymentPageUrl; });
+          } else { showResult('order'); }
+        })
+        .catch(function(err){ busy=false; showErr((err&&err.error)||'İşlem başarısız, tekrar deneyin'); renderCartPanel(); });
+    }
+
+    // ── Ödeme dönüşü ───────────────────────────────────────────────────────────
+    function handleReturn(){
+      if (qs.get('payerror')) { showResult('payerror'); return; }
+      var orderId=qs.get('order');
+      if (qs.get('paid')==='1' && orderId){
+        fetch(API+'/api/public/'+encodeURIComponent(slug)+'/orders/'+orderId+'/payment-status')
+          .then(function(r){ return r.json(); })
+          .then(function(j){ showResult(j.data && j.data.paymentStatus==='paid' ? 'paid' : 'payerror'); })
+          .catch(function(){ showResult('payerror'); });
+      }
+    }
+    function showResult(kind){
+      var cfg = {
+        paid:     { bg:'#dcfce7', c:'#16a34a', ic:'✓', t:'Ödeme alındı ✓', m:'Ödemeniz onaylandı, siparişiniz mutfağa iletildi. Afiyet olsun!' },
+        order:    { bg:'#dcfce7', c:'#16a34a', ic:'✓', t:'Siparişiniz alındı', m:'Garson onayından sonra hazırlanır. Ödeme masada alınır.' },
+        payerror: { bg:'#fee2e2', c:'#c0392b', ic:'!', t:'Ödeme tamamlanamadı', m:'Ödeme alınamadı veya iptal edildi. Tekrar deneyebilir ya da masada ödeyebilirsiniz.' },
+      }[kind];
+      var back = './menu.html?slug='+encodeURIComponent(slug)+(masa?'&masa='+encodeURIComponent(masa):'')+(qrt?'&t='+encodeURIComponent(qrt):'');
+      var el=document.createElement('div'); el.className='zx-result';
+      el.innerHTML='<div class="box"><div class="ic" style="background:'+cfg.bg+';color:'+cfg.c+'">'+cfg.ic+'</div>'+
+        '<h2 style="color:#294620;margin:0 0 8px">'+cfg.t+'</h2><p style="color:#7c7c7c;margin:0 0 20px">'+cfg.m+'</p>'+
+        '<button class="zx-btn zx-btn-order" style="max-width:220px;margin:0 auto" onclick="location.href=\''+back+'\'">Menüye Dön</button></div>';
+      document.body.appendChild(el);
+    }
+
+    // ── Ürün foto modalı ───────────────────────────────────────────────────────
+    function openModal(img,name,desc,price){
+      var m=document.getElementById('zxModal');
+      if(!m){ m=document.createElement('div'); m.id='zxModal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;'; document.body.appendChild(m); m.addEventListener('click',function(){ m.style.display='none'; }); }
+      m.style.display='flex';
+      m.innerHTML='<div style="max-width:420px;width:100%;background:#fff;border-radius:16px;overflow:hidden" onclick="event.stopPropagation()"><img src="'+esc(img)+'" style="width:100%;display:block" /><div style="padding:16px;font-family:Urbanist,sans-serif"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:18px;color:#294620">'+esc(name)+'</b><b style="color:#bd9f57">'+esc(price)+'</b></div>'+(desc?'<p style="margin:8px 0 0;color:#7c7c7c;font-size:14px">'+esc(desc)+'</p>':'')+'</div></div>';
+    }
+  })();
+  </script>
+</body>
+</html>

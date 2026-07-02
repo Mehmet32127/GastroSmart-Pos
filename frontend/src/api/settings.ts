@@ -13,6 +13,8 @@ export const settingsApi = {
       currency: string
       timezone: string
       paperWidth?: '58mm' | '80mm'
+      qrAutoRotate?: 'off' | 'daily' | 'weekly'
+      qrLastRotated?: string | null
     }>>('/settings'),
 
   update: (data: Record<string, unknown>) =>

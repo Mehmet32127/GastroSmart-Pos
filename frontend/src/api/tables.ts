@@ -24,6 +24,13 @@ export const tablesApi = {
   delete: (id: string) =>
     client.delete<ApiResponse>(`/tables/${id}`),
 
+  // QR token yenile — eski/fotoğraflanmış QR geçersiz olur
+  rotateQr: (id: string) =>
+    client.post<ApiResponse<Table>>(`/tables/${id}/qr/rotate`),
+
+  rotateAllQr: () =>
+    client.post<ApiResponse<{ count: number }>>('/tables/qr/rotate-all'),
+
   merge: (sourceTableId: string, targetTableId: string) =>
     client.post<ApiResponse<{ sourceTable: Table; targetTable: Table }>>(
       '/tables/merge',
