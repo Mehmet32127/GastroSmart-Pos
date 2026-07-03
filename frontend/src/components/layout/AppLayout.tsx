@@ -5,11 +5,9 @@ import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { LockScreen } from './LockScreen'
 import { ShortcutsModal } from '@/components/ShortcutsModal'
-import { CalculatorModal } from '@/components/CalculatorModal'
 import { useAuthStore } from '@/store/authStore'
 import { useSocket } from '@/hooks/useSocket'
 import { useOfflineQueue } from '@/hooks/useOfflineQueue'
-import { useIdleLogout } from '@/hooks/useIdleLogout'
 import { useLock } from '@/hooks/useLock'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
@@ -50,10 +48,8 @@ export const AppLayout: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 30 dakika hareketsizlikte otomatik çıkış (5 dk önce uyarı)
-  useIdleLogout(30, 5)
-
-  // 5 dakika hareketsizlikte ekran kilidi (logout değil — şifre ile açılır)
+  // Manuel ekran kilidi (logout değil — şifre ile açılır). Otomatik idle-kilit
+  // ve idle-logout kaldırıldı; kilit yalnızca kullanıcı isteğiyle (buton/Ctrl+L).
   const { locked, lock, unlock } = useLock()
 
   // Kişisel tercihler hook'u — tema + ses + kısayollar
@@ -62,9 +58,8 @@ export const AppLayout: React.FC = () => {
   // Adisyon yazıcısı — durum dinleyici + izinli yazıcıya sessiz yeniden bağlanma
   useEffect(() => { usePrinterStore.getState().init() }, [])
 
-  // Klavye kısayolu modal'ı + hesap makinesi modal'ı
+  // Klavye kısayolu modal'ı
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [calculatorOpen, setCalculatorOpen] = useState(false)
   useKeyboardShortcuts({
     onShowShortcuts: () => setShortcutsOpen((o) => !o),
     onLock: lock,
@@ -190,23 +185,6 @@ export const AppLayout: React.FC = () => {
 
       {/* Klavye kısayolları rehberi (Ctrl+/ ile açılır) */}
       <ShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-
-      {/* Hesap makinesi (sidebar'dan veya sayfadan açılır) */}
-      <CalculatorModal isOpen={calculatorOpen} onClose={() => setCalculatorOpen(false)} />
-
-      {/* Calculator'ı global window event ile aç — Sidebar bunu emit eder */}
-      <CalculatorTrigger onOpen={() => setCalculatorOpen(true)} />
     </div>
   )
-}
-
-// Sidebar'dan tetiklemek için event-based köprü.
-// Sidebar dispatchEvent('open-calculator') yapar, AppLayout dinler.
-const CalculatorTrigger: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
-  useEffect(() => {
-    const handler = () => onOpen()
-    window.addEventListener('open-calculator', handler)
-    return () => window.removeEventListener('open-calculator', handler)
-  }, [onOpen])
-  return null
 }

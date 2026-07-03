@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ordersApi } from '@/api/orders'
 import { tablesApi } from '@/api/tables'
-import { reportsApi } from '@/api/reports'
 import { useAuthStore } from '@/store/authStore'
 import type { OperationalAlert } from '@/types'
 
@@ -20,7 +19,6 @@ const minsSince = (s?: string) => { const ms = toMs(s); return ms ? Math.floor((
  * Operasyonel uyarılar — eşik bazlı, canlı hesaplanır (60 sn'de bir):
  *  • Geciken siparişler (30 dk+ açık)
  *  • Uzun süre açık masalar (90 dk+)
- *  • Düşük stok (yalnız admin/müdür — rapor yetkisi olanlar)
  *
  * Garson rapor/uyarı görmez. Her hesaplamada liste TAMAMEN yenilenir (replace),
  * böylece çözülen uyarılar kendiliğinden düşer; tekrar/birikme olmaz.
@@ -63,22 +61,6 @@ export function useOperationalAlerts(): OperationalAlert[] {
             title: `${longTables.length} masa uzun süredir açık`,
             message: longTables.slice(0, 3).map(t => t.name).join(', ') + (longTables.length > 3 ? '…' : ''),
           })
-        }
-
-        // Düşük stok — rapor yetkisi gerektirir (kasiyer overview göremez)
-        if (role === 'admin' || role === 'manager') {
-          try {
-            const ov = await reportsApi.getOverview()
-            const low = ov.data.data?.lowStock || []
-            if (low.length > 0) {
-              list.push({
-                id: 'low-stock',
-                severity: 'warning',
-                title: `${low.length} üründe stok düşük`,
-                message: low.slice(0, 3).map(i => i.name).join(', ') + (low.length > 3 ? '…' : ''),
-              })
-            }
-          } catch { /* yetki/ağ hatası — stok uyarısını atla */ }
         }
 
         if (active) setAlerts(list)

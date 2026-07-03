@@ -33,7 +33,7 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers = {}) {
     if (!prefs.shortcutsEnabled) return
 
     const handler = (e: KeyboardEvent) => {
-      // Açık modal varsa global kısayollar tetiklenmesin (Calculator, Lock, vs)
+      // Açık modal varsa global kısayollar tetiklenmesin (Lock, vs)
       // Modal'lar kendi kapanma + klavye handler'larını yönetir.
       const hasOpenModal = document.querySelector('[role="dialog"][aria-modal="true"]') !== null
       if (hasOpenModal) return

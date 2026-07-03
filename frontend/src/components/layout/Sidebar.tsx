@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutGrid, ShoppingBag, CalendarDays, Clock, BarChart3,
-  UtensilsCrossed, Users, Palette, Settings, LogOut, Lock, Calculator,
+  UtensilsCrossed, Users, Palette, Settings, LogOut, Lock,
   ChevronLeft, ChevronRight, Wallet, QrCode,
 } from 'lucide-react'
 import { cn } from '@/utils/format'
@@ -31,8 +31,8 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/history',      label: 'Geçmiş',        icon: <Clock size={22} /> },
   { path: '/reports',      label: 'Raporlar',      icon: <BarChart3 size={22} />,      roles: ['admin', 'manager', 'cashier'] },
 
-  { path: '/menu',         label: 'Menü & Stok',   icon: <UtensilsCrossed size={22} />,roles: ['admin', 'manager'] },
-  { path: '/qr',           label: 'QR Menü',       icon: <QrCode size={22} />,          roles: ['admin', 'manager'] },
+  { path: '/menu',         label: 'Menü',          icon: <UtensilsCrossed size={22} />,roles: ['admin', 'manager'] },
+  { path: '/menu-import',  label: 'QR Menü Entegrasyonu', icon: <QrCode size={22} />,   roles: ['admin', 'manager'] },
   { path: '/users',        label: 'Kullanıcılar',  icon: <Users size={22} />,           roles: ['admin'] },
   { path: '/theme',        label: 'Tema',          icon: <Palette size={22} />,         roles: ['admin', 'manager'] },
   { path: '/settings',    label: 'Ayarlar',       icon: <Settings size={22} />,        roles: ['admin', 'manager'] },
@@ -143,23 +143,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Kilit + Logout */}
       <div className="p-2 border-t border-[var(--color-border)] space-y-1">
-        {/* Hesap Makinesi — kasiyer için. Window event ile AppLayout'a sinyal gönder. */}
-        {!logoutConfirm && (
-          <button
-            onClick={() => window.dispatchEvent(new Event('open-calculator'))}
-            title={collapsed ? 'Hesap Makinesi' : undefined}
-            className={cn(
-              'w-full flex items-center rounded-xl transition-all duration-200',
-              'text-sm font-medium font-body text-[var(--color-text-muted)]',
-              'hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]',
-              collapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
-            )}
-          >
-            <Calculator size={22} className="flex-shrink-0" />
-            {!collapsed && <span>Hesap Makinesi</span>}
-          </button>
-        )}
-
         {/* Kilitle — paylaşımlı bilgisayar için. Tek dokunuş, şifre ister. */}
         {onLock && !logoutConfirm && (
           <button onClick={onLock} title={collapsed ? 'Ekranı Kilitle' : undefined}

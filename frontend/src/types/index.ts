@@ -89,8 +89,6 @@ export interface MenuItem {
   description?: string
   price: number
   cost?: number
-  stock?: number
-  minStock?: number
   unit: string
   tax: number
   active: boolean
@@ -209,13 +207,6 @@ export interface TableStats {
   occupancyRate: number
 }
 
-export interface LowStockItem {
-  name: string
-  stock_quantity: number
-  min_stock: number
-  unit: string
-}
-
 export interface ProfitItem {
   name: string
   revenue: number
@@ -236,8 +227,6 @@ export interface ReportsOverview {
   tables: TableStats
   turnover: number
   closedToday: number
-  lowStock: LowStockItem[]
-  stockSummary: { trackedCount: number; items: LowStockItem[] }
   topProfit: ProfitItem[]
   recentOrders: RecentOrder[]
 }

@@ -32,7 +32,7 @@ export const reportsApi = {
     ),
 
   exportExcel: (
-    type: 'daily' | 'weekly' | 'waiters' | 'stock' | 'reservations',
+    type: 'daily' | 'weekly' | 'waiters' | 'reservations',
     params?: Record<string, string>
   ) =>
     client.get(`/reports/export/${type}`, { params, responseType: 'blob' }),

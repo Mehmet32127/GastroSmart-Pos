@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
-import { Download, TrendingUp, ShoppingBag, DollarSign, ArrowLeft, Crown, Receipt, Users, Package, Clock, Ban, Flame, LayoutGrid, AlertTriangle, ArrowUp, ArrowDown, Award, History, CalendarDays } from 'lucide-react'
+import { Download, TrendingUp, ShoppingBag, DollarSign, ArrowLeft, Crown, Receipt, Users, Package, Clock, Ban, Flame, LayoutGrid, ArrowUp, ArrowDown, Award, History, CalendarDays } from 'lucide-react'
 import { Card, Spinner } from '@/components/ui/common'
 import { reportsApi } from '@/api/reports'
 import { menuApi } from '@/api/menu'
 import { formatCurrency } from '@/utils/format'
-import type { WaiterPerformance, ReportsOverview, TableStats, LowStockItem, ProfitItem, RecentOrder } from '@/types'
+import type { WaiterPerformance, ReportsOverview, TableStats, ProfitItem, RecentOrder } from '@/types'
 import toast from 'react-hot-toast'
 
 const COLORS = ['#f59e0b','#22c55e','#3b82f6','#a78bfa','#ef4444','#ec4899','#14b8a6','#f97316','#64748b','#e11d48']
@@ -193,50 +193,6 @@ const TablesWidget: React.FC<{ tables: TableStats; turnover: number; closedToday
     </Card>
   )
 }
-
-// Stok durumu — düşük stok uyarıları; uyarı yokken en düşük stoklular + özet
-const StockStatusWidget: React.FC<{ items: LowStockItem[]; summary: { trackedCount: number; items: LowStockItem[] } }> = ({ items, summary }) => (
-  <Card padding="md">
-    <h3 className="text-sm font-semibold font-display text-[var(--color-text)] mb-3 flex items-center gap-2">
-      <AlertTriangle size={15} className="text-amber-400" /> Stok Durumu
-      {items.length > 0 && <span className="ml-auto text-xs font-mono text-amber-400">{items.length} uyarı</span>}
-    </h3>
-    {items.length > 0 ? (
-      <div className="space-y-1.5 max-h-[220px] overflow-y-auto">
-        {items.map((it, i) => {
-          const out = it.stock_quantity <= 0
-          return (
-            <div key={i} className="flex items-center justify-between py-1.5 border-b border-[var(--color-border)]/40">
-              <span className="text-xs text-[var(--color-text)] font-body truncate pr-2">{it.name}</span>
-              <span className={`text-xs font-mono shrink-0 ${out ? 'text-red-500 font-semibold' : 'text-amber-400'}`}>
-                {out ? 'TÜKENDİ' : `${it.stock_quantity} ${it.unit}`}
-                <span className="text-[var(--color-text-muted)] font-normal"> / min {it.min_stock}</span>
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    ) : summary.trackedCount > 0 ? (
-      <>
-        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-green-500/10 border border-green-500/20">
-          <span className="text-green-400 text-sm">✓</span>
-          <span className="text-xs text-green-400 font-body">{summary.trackedCount} takipli ürünün tümü yeterli</span>
-        </div>
-        <p className="text-[10px] uppercase tracking-wide text-[var(--color-text-muted)] font-mono mb-1.5">En düşük stoklular</p>
-        <div className="space-y-1">
-          {summary.items.map((it, i) => (
-            <div key={i} className="flex items-center justify-between py-1 border-b border-[var(--color-border)]/40">
-              <span className="text-xs text-[var(--color-text)] font-body truncate pr-2">{it.name}</span>
-              <span className="text-xs font-mono text-[var(--color-text-muted)] shrink-0">{it.stock_quantity} {it.unit}</span>
-            </div>
-          ))}
-        </div>
-      </>
-    ) : (
-      <p className="text-sm text-[var(--color-text-muted)] text-center py-10 font-body">Stok takibi yapılan ürün yok</p>
-    )}
-  </Card>
-)
 
 // Haftalık ciro trendi — son günlerin bar grafiği + toplam/ortalama
 const WeeklyTrendWidget: React.FC<{ data: any[] }> = ({ data }) => {
@@ -487,7 +443,7 @@ export const ReportsPage: React.FC = () => {
     } catch { toast.error('Kategori yüklenemedi') }
   }
 
-  const handleExport = async (type: 'daily' | 'weekly' | 'waiters' | 'stock') => {
+  const handleExport = async (type: 'daily' | 'weekly' | 'waiters') => {
     setExporting(type)
     try {
       const { data } = await reportsApi.exportExcel(type)
@@ -542,11 +498,11 @@ export const ReportsPage: React.FC = () => {
           <p className="text-sm text-[var(--color-text-muted)] font-body">Satış analizi ve istatistikler</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {(['daily','weekly','waiters','stock'] as const).map(type => (
+          {(['daily','weekly','waiters'] as const).map(type => (
             <button key={type} onClick={() => handleExport(type)} disabled={!!exporting}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--color-surface2)] border border-[var(--color-border)] text-xs font-body text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors disabled:opacity-50">
               <Download size={12} />
-              {type === 'daily' ? 'Günlük' : type === 'weekly' ? 'Haftalık' : type === 'waiters' ? 'Garsonlar' : 'Stok'}
+              {type === 'daily' ? 'Günlük' : type === 'weekly' ? 'Haftalık' : 'Garsonlar'}
             </button>
           ))}
         </div>
@@ -781,12 +737,9 @@ export const ReportsPage: React.FC = () => {
         <PaymentDonut cash={daily?.cashRevenue || 0} card={daily?.cardRevenue || 0} />
       </div>
 
-      {/* Masa doluluk | Stok durumu */}
+      {/* Masa doluluk */}
       {overview && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <TablesWidget tables={overview.tables} turnover={overview.turnover} closedToday={overview.closedToday} />
-          <StockStatusWidget items={overview.lowStock} summary={overview.stockSummary} />
-        </div>
+        <TablesWidget tables={overview.tables} turnover={overview.turnover} closedToday={overview.closedToday} />
       )}
 
       {/* Haftalık ciro trendi | En kârlı ürünler */}

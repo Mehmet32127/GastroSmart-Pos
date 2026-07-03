@@ -18,7 +18,7 @@ import { ReservationsPage } from '@/pages/ReservationsPage'
 import { HistoryPage }      from '@/pages/HistoryPage'
 import { ReportsPage }      from '@/pages/ReportsPage'
 import { MenuPage }         from '@/pages/MenuPage'
-import { QrMenuPage }       from '@/pages/QrMenuPage'
+import { QrIntegrationPage } from '@/pages/QrIntegrationPage'
 import { UsersPage }        from '@/pages/UsersPage'
 import { ThemePage }        from '@/pages/ThemePage'
 import { SettingsPage }     from '@/pages/SettingsPage'
@@ -178,9 +178,9 @@ export const App: React.FC = () => {
             </RoleGuard>
           } />
 
-          <Route path="/qr" element={
+          <Route path="/menu-import" element={
             <RoleGuard roles={['admin', 'manager']}>
-              <QrMenuPage />
+              <QrIntegrationPage />
             </RoleGuard>
           } />
 

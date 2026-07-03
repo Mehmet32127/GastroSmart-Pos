@@ -24,10 +24,8 @@ export const tablesApi = {
   delete: (id: string) =>
     client.delete<ApiResponse>(`/tables/${id}`),
 
-  // QR token yenile — eski/fotoğraflanmış QR geçersiz olur
-  rotateQr: (id: string) =>
-    client.post<ApiResponse<Table>>(`/tables/${id}/qr/rotate`),
-
+  // Tüm masa QR güvenlik kodlarını yenile (Ayarlar → QR Güvenliği).
+  // Eski/fotoğraflanmış QR'larla sipariş verilemez.
   rotateAllQr: () =>
     client.post<ApiResponse<{ count: number }>>('/tables/qr/rotate-all'),
 
